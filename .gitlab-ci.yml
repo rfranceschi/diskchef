@@ -7,7 +7,7 @@ variables:
 
 before_script:
   - python -V               # Print out python version for debugging
-  - pip install .
+  - pip install -r requirements.txt .
 
 test:
   script:
