@@ -1,0 +1,7 @@
+numpy >= 1.19.0
+matplotlib >= 3.3.0
+astropy >= 4.0
+tqdm
+-e git@gitlab.com:ANDES-dev/divan.git
+
+
