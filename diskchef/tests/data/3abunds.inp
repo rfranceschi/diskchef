@@ -1,0 +1,17 @@
+# initial abundances, n(X)/n(H), 'frc(1:nfrc)':
+15                ! "Low" metals
+G0         1.000D-00
+HD         1.550D-05
+oH2        3.750D-01
+pH2        1.250D-01
+HE         0.975D-01
+C          0.786D-04
+N          2.470D-05
+O          1.800D-04
+S          0.914D-07
+SI         0.974D-08
+NA         2.250D-09
+MG         1.090D-08
+FE         2.740D-09
+P          2.160D-10
+CL         1.000D-09

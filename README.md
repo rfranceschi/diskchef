@@ -1,2 +1,4 @@
-# Ultimate disk fitter
+# DiskCheF: Disk Chemical Fitter
+
+
 
