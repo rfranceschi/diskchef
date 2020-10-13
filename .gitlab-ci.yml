@@ -7,7 +7,7 @@ variables:
 
 before_script:
   - python -V               # Print out python version for debugging
-  - python setup.py install
+  - pip install .
 
 test:
   script:
