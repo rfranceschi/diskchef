@@ -8,5 +8,12 @@ setup(
     license='(c) authors',
     author='Grigorii V. Smirnov-Pinchukov',
     author_email='smirnov@mpia.de',
-    description='Tool to retrieve chemical and physical parameters out of submm observations'
+    description='Tool to retrieve chemical and physical parameters out of submm observations',
+    install_requires=[
+        'numpy >= 1.19.0',
+        'matplotlib >= 3.3.0',
+        'astropy >= 4.0',
+        'tqdm',
+        'divan @ git+https://gitlab.com/SmirnGreg/divan.git'
+    ]
 )
