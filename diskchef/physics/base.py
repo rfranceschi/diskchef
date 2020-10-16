@@ -5,6 +5,7 @@ from astropy import units as u
 from astropy.visualization import quantity_support
 
 quantity_support()
+import matplotlib.axes
 from matplotlib import pyplot as plt
 from matplotlib.colors import LogNorm
 from matplotlib.cm import get_cmap
@@ -13,7 +14,7 @@ import numpy as np
 from divan import Divan
 
 from diskchef import CTable
-from diskchef.engine.exceptions import CHEFNotImplemented
+from diskchef.engine.exceptions import CHEFNotImplementedError
 
 
 @dataclass
@@ -27,23 +28,23 @@ class PhysicsBase:
     vertical_bins = 100
     dust_to_gas: float = 0.01
 
-    @u.quantity_input(r=u.au, z=u.au)
-    def gas_density(self, r, z) -> u.g / u.cm ** 3:
+    @u.quantity_input
+    def gas_density(self, r: u.au, z: u.au) -> u.g / u.cm ** 3:
         """Calculates gas density at given r, z"""
-        raise CHEFNotImplemented
+        raise CHEFNotImplementedError
 
     @u.quantity_input(r=u.au, z=u.au)
     def dust_temperature(self, r, z) -> u.K:
         """Calculates dust temperature at given r, z"""
-        raise CHEFNotImplemented
+        raise CHEFNotImplementedError
 
-    @u.quantity_input(r=u.au, z=u.au)
-    def dust_density(self, r, z) -> u.g / u.cm ** 3:
+    @u.quantity_input
+    def dust_density(self, r: u.au, z: u.au) -> u.g / u.cm ** 3:
         """Calculates dust density at given r, z"""
         return self.gas_density(r, z) * self.dust_to_gas
 
-    @u.quantity_input(r=u.au, z=u.au)
-    def gas_temperature(self, r, z) -> u.K:
+    @u.quantity_input
+    def gas_temperature(self, r: u.au, z: u.au) -> u.K:
         """Calculates gas temperature at given r, z
 
         Returns:
@@ -73,14 +74,9 @@ class PhysicsBase:
         return table
 
     def plot_column_density(self, axes=None, table=None):
-        raise CHEFNotImplemented
-        # if axes is None:
-        #     fig, axes = plt.subplots()
-        # if table is None:
-        #     table = self.table
-        # axes.semilogx(table["Radius"], table["Height to radius"], "r*")
+        raise CHEFNotImplementedError
 
-    def plot_density(self, axes=None, table=None):
+    def plot_density(self, axes: matplotlib.axes.Axes = None, table: CTable = None):
         if table is None:
             table = self.table
         # if axes is None:

@@ -4,9 +4,9 @@ import numpy as np
 from matplotlib import pyplot as plt
 
 from diskchef.physics.parametrized import powerlawpiece, PieceWisePowerLaw, PowerLawPhysics
+from diskchef.physics.william_best import WilliamsBest2014
 
-
-physics = PowerLawPhysics()
+physics = WilliamsBest2014()
 # physics.plot_column_density()
 physics.plot_density()
 plt.show()

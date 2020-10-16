@@ -10,3 +10,4 @@ class CTable(QTable):
         column_quantity = super().__getitem__(item)
         column_quantity.name = item
         return column_quantity
+
