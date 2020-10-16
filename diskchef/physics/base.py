@@ -24,8 +24,8 @@ class PhysicsBase:
     r_min: u.au = 0.1 * u.au
     r_max: u.au = 500 * u.au
     zr_max: float = 0.7
-    radial_bins = 100
-    vertical_bins = 100
+    radial_bins: int = 100
+    vertical_bins: int = 100
     dust_to_gas: float = 0.01
 
     @u.quantity_input
@@ -55,9 +55,10 @@ class PhysicsBase:
     @cached_property
     def table(self) -> CTable:
         """Return the associated diskchef.CTable with r, z, and dust and gas properties"""
-        r, z2r = np.meshgrid(
+        z2r, r = np.meshgrid(
+            np.linspace(0, self.zr_max, self.vertical_bins),
             np.geomspace(self.r_min.to(u.au).value, self.r_max.to(u.au).value, self.radial_bins),
-            np.linspace(0, self.zr_max, self.vertical_bins)
+
         )
         table = CTable(
             [
