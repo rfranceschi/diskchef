@@ -13,6 +13,8 @@ setup(
         'numpy >= 1.19.0',
         'matplotlib >= 3.3.0',
         'astropy >= 4.0',
+        'scipy >= 1.5',
+        'named_constants'
         'tqdm',
         'divan @ git+https://gitlab.com/SmirnGreg/divan.git'
     ]
