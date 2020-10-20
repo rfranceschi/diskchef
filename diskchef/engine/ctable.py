@@ -1,12 +1,15 @@
 """Class CTable(astropy.table.QTable) with additional features for CheF"""
 from typing import Callable
-from functools import partial
+from functools import cached_property
 
+import numpy as np
 from astropy.table import QTable
 from astropy import units as u
 from named_constants import Constants
 from scipy.interpolate import griddata
 
+
+from diskchef.engine.exceptions import CHEFNotImplementedError
 
 class TableColumns(Constants):
     radius = 'Radius'
@@ -39,15 +42,38 @@ class CTable(QTable):
         """Column with height coordinate"""
         return self['Height']
 
+    @property
+    def zr(self):
+        return self['Height to radius']
+
     def interpolate(self, column: str) -> Callable[[u.Quantity, u.Quantity], u.Quantity]:
-        """Returns callable(r, z) with interpolated value of column"""
+        """
+        Interpolate the selected quantity
+        Args:
+            column: str -- column name of the table to interpolate
+
+        Returns: callable(r, z) with interpolated value of column
+        """
 
         def _interpolation(r: u.au, z: u.au):
             interpolated = griddata(
                 points=(self.r, self.z),
                 values=self[column],
-                xi=(r.to(u.au).value, z.to(u.au).value)
+                xi=(r.to(u.au).value, z.to(u.au).value),
+                fill_value=0
             ) << self[column].unit
             return interpolated
 
         return _interpolation
+
+    @cached_property
+    def is_in_zr_regular_grid(self) -> bool:
+        """
+        Returns: whether the table has same number of relative heights
+        """
+        zr_set = set(self.zr)
+        lengths = [len(np.argwhere(self.zr == zr_set))]
+        return len(set(lengths)) == 1
+
+    def add_row(self, vals=None, mask=None):
+        raise CHEFNotImplementedError("Adding rows is not possible in CTable")
