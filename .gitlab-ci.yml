@@ -1,4 +1,4 @@
-image: continuumio/anaconda3:2020.07
+image: python:3.8
 
 # Change pip's cache directory to be inside the project directory since we can
 # only cache local items.
