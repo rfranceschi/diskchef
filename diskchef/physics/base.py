@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from functools import cached_property
+import  warnings
 
 import scipy.integrate
 from astropy import units as u
@@ -15,7 +16,7 @@ import numpy as np
 from divan import Divan
 
 from diskchef import CTable
-from diskchef.engine.exceptions import CHEFNotImplementedError
+from diskchef.engine.exceptions import CHEFNotImplementedError, CHEFSlowDownWarning
 
 
 @dataclass
@@ -102,17 +103,40 @@ class PhysicsBase:
         klog = np.geomspace(1 / steps_for_log, 1, steps_for_log)
         klin = np.linspace(0, 1 / steps_for_log, steps_for_lin, endpoint=False)
         k = np.concatenate([klin, klog])
-
-        integrals = []
-        for _r, _z in zip(r, z):
-            int_r = r0 + (_r - r0) * k
-            int_z = z0 + (_z - z0) * k
-            k_length_cm = (
-                    ((int_r[-1] - int_r[0]) ** 2 + (int_z[-1] - int_z[0]) ** 2) ** 0.5
-            ).to(u.cm)
-            value = self.table.interpolate(colname)(int_r, int_z)
-            integral = scipy.integrate.trapz(value, k) * k_length_cm
-            integrals.append(integral)
+        integrals = np.empty_like(r.value) << (u.cm * self.table[colname].unit)
+        if not (self.table.is_in_zr_regular_grid and r0 == z0 == 0 * u.au):
+            warnings.warn(CHEFSlowDownWarning(
+                "Column density calculations are expensive, unless the grid is regular in z/r AND r0 == z0 == 0"
+            ))
+            for i, (_r, _z) in enumerate(zip(r, z)):
+                int_r = r0 + (_r - r0) * k
+                int_z = z0 + (_z - z0) * k
+                k_length_cm = (
+                        ((int_r[-1] - int_r[0]) ** 2 + (int_z[-1] - int_z[0]) ** 2) ** 0.5
+                ).to(u.cm)
+                value = self.table.interpolate(colname)(int_r, int_z)
+                integral = scipy.integrate.trapz(value, k) * k_length_cm
+                integrals[i] = integral
+        else:
+            zr_set = set(self.table.zr)
+            for _zr in zr_set:
+                this_zr_rows = np.where(self.table.zr == _zr)[0]
+                int_r = r0 + (np.max(self.table.r[this_zr_rows]) - r0) * k
+                int_z = z0 + (np.max(self.table.z[this_zr_rows]) - z0) * k
+                # Mix the grid elements into the int_r array
+                int_r = u.Quantity([*int_r, *self.table.r[this_zr_rows]])
+                int_z = u.Quantity([*int_z, *self.table.z[this_zr_rows]])
+                # The position of the grid elemenets in new int_r array
+                idx = np.where(int_r.argsort() - len(k) >= 0)[0]
+                int_r.sort()
+                int_z.sort()
+                k = (int_r - r0) / (np.max(self.table.r[this_zr_rows]) - r0)
+                k_length_cm = (
+                        ((int_r[-1] - int_r[0]) ** 2 + (int_z[-1] - int_z[0]) ** 2) ** 0.5
+                ).to(u.cm)
+                value = self.table.interpolate(colname)(int_r, int_z)
+                integrals_at_zr = scipy.integrate.cumtrapz(value.value, k, initial=0) * value.unit * k_length_cm
+                integrals[this_zr_rows] = integrals_at_zr[idx]
 
         return u.Quantity(integrals)
 
@@ -128,4 +152,3 @@ class PhysicsBase:
         dvn.physical_structure = table
         dvn.generate_figure_volume_densities(extra_gas_to_dust=100)
         dvn.generate_figure_temperatures()
-

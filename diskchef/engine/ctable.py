@@ -76,4 +76,4 @@ class CTable(QTable):
         return len(set(lengths)) == 1
 
     def add_row(self, vals=None, mask=None):
-        raise CHEFNotImplementedError("Adding rows is not possible in CTable")
+        raise CHEFNotImplementedError("Adding rows (grid points) is not possible in CTable")

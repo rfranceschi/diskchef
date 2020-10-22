@@ -20,11 +20,7 @@ class ChemistryWB2014(ChemistryBase):
 
     def run_chemistry(self):
         self.table["H2"] = 0.5
-        self.table["H2 number density"] = self.table["H2"] * self.table["n(H+2H2)"]
-        self.table["H2 column density towards star"] = self.physics.column_density_to(
-            self.table.r, self.table.z,
-            "H2 number density"
-        )
+        self.calculate_column_density_towards_star("H2")
 
         self.table["CO"] = self.midplane_co_abundance
         self.table["CO"][
@@ -34,6 +30,26 @@ class ChemistryWB2014(ChemistryBase):
         self.table["CO"][
             self.table["H2 column density towards star"] < self.h2_column_denisty_that_shields_co
             ] = self.atmosphere_co_abundance
+
+    def calculate_column_density_towards_star(self, species: str):
+        """
+        Calculates the column density of a given species towards star for each self.table row
+
+        Adds two columns to the table: f"{species} number density" and f"{species} column density towards star"
+
+        Args:
+            species: species to integrate
+
+        Returns: self.table[f"{species} column density towards star"]
+        """
+        self.table[f"{species} number density"] = self.table[species] * self.table["n(H+2H2)"]
+        self.table[f"{species} column density towards star"] = self.physics.column_density_to(
+            self.table.r, self.table.z,
+            f"{species} number density"
+        )
+
+        return self.table[f"{species} column density towards star"]
+
 
 @dataclass
 class NonzeroChemistryWB2014(ChemistryWB2014):
