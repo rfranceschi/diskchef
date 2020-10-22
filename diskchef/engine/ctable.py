@@ -1,10 +1,13 @@
 """Class CTable(astropy.table.QTable) with additional features for CheF"""
+import sys
 from typing import Callable
 from functools import cached_property
+from collections import UserDict
 
 import numpy as np
 from astropy.table import QTable
 from astropy import units as u
+from astropy.io.ascii import write
 from named_constants import Constants
 from scipy.interpolate import griddata
 
@@ -14,6 +17,17 @@ from diskchef.engine.exceptions import CHEFNotImplementedError
 class TableColumns(Constants):
     radius = 'Radius'
     height = 'Height'
+
+class DictLikeDefault(UserDict):
+    def __init__(self, default=None):
+        super(DictLikeDefault, self).__init__()
+        self.default = default
+
+    def __getitem__(self, item):
+        try:
+            super().__getitem__(item)
+        except KeyError:
+            return self.default
 
 
 class CTable(QTable):
@@ -77,3 +91,7 @@ class CTable(QTable):
 
     def add_row(self, vals=None, mask=None):
         raise CHEFNotImplementedError("Adding rows (grid points) is not possible in CTable")
+
+    def write_e(self, file=sys.stdout, format="fixed_width", **kwargs):
+        write(self, file, formats={column: "%e" for column in self.colnames}, format=format, **kwargs)
+
