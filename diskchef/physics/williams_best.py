@@ -44,11 +44,12 @@ class WilliamsBest2014(ParametrizedPhysics):
         """
         temp_midplane = self.midplane_temperature_1au * (r.to(u.au) / u.au) ** (-self.temperature_slope)
         temp_atmosphere = self.atmosphere_temperature_1au * (r.to(u.au) / u.au) ** (-self.temperature_slope)
-        pressure_scalehight = ((
-                                       const.R * temp_midplane * r ** 3 /
-                                       (const.G * self.star_mass * self.mean_molecular_mass)
-                               ) ** 0.5
-                               ).to(u.au)
+        pressure_scalehight = (
+                (
+                        const.R * temp_midplane * r ** 3 /
+                        (const.G * self.star_mass * self.mean_molecular_mass)
+                ) ** 0.5
+        ).to(u.au)
         temperature = np.zeros_like(z).value << u.K
         indices_atmosphere = z >= 4 * pressure_scalehight
         indices_midplane = ~ indices_atmosphere
@@ -109,10 +110,7 @@ class WilliamsBest2014(ParametrizedPhysics):
 
     def _vertical_density_integrator(self, r, z, t):
         dlntdz = np.zeros_like(t).value << (1 / u.au)
-        dlntdz[:-1] = (t[1:] - t[:-1]) \
-                      / (z[1:] - z[:-1]) \
-                      / (t[:-1])
-
+        dlntdz[:-1] = (t[1:] - t[:-1]) / (z[1:] - z[:-1]) / (t[:-1])
         return -(
                 const.G * self.star_mass * z / (r ** 2 + z ** 2) ** 1.5
                 * self.mean_molecular_mass / const.R / t

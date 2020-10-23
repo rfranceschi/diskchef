@@ -81,7 +81,9 @@ class PhysicsBase:
             self, r: u.au, z: u.au,
             colname,
             r0: u.au = 0 * u.au, z0: u.au = 0 * u.au,
-            steps=500, steps_for_log_fraction=0.9
+            steps=500, steps_for_log_fraction=0.9,
+            only_gridpoint=False,
+            point_by_point=False
     ):
         """
         Calculates column density of the given CTable quantity towards the `(r0, z0)`
@@ -94,7 +96,8 @@ class PhysicsBase:
             z0: coordinate of the initial point (0 by default)
             steps: number of steps
             steps_for_log_fraction: fraction of steps to be taken in log scale
-
+            only_gridpoint: when calculating column density towards star, whether to interpolate, or only take grid points
+            point_by_point: force separate integration for each point if True
         Returns:
             column density, in self.table[colname].unit * u.cm
         """
@@ -104,7 +107,7 @@ class PhysicsBase:
         klin = np.linspace(0, 1 / steps_for_log, steps_for_lin, endpoint=False)
         k = np.concatenate([klin, klog])
         integrals = np.empty_like(r.value) << (u.cm * self.table[colname].unit)
-        if not (self.table.is_in_zr_regular_grid and r0 == z0 == 0 * u.au):
+        if not (self.table.is_in_zr_regular_grid and r0 == z0 == 0 * u.au) or point_by_point:
             warnings.warn(CHEFSlowDownWarning(
                 "Column density calculations are expensive, unless the grid is regular in z/r AND r0 == z0 == 0"
             ))
@@ -123,13 +126,18 @@ class PhysicsBase:
                 this_zr_rows = np.where(self.table.zr == _zr)[0]
                 int_r = r0 + (np.max(self.table.r[this_zr_rows]) - r0) * k
                 int_z = z0 + (np.max(self.table.z[this_zr_rows]) - z0) * k
-                # Mix the grid elements into the int_r array
-                int_r = u.Quantity([*int_r, *self.table.r[this_zr_rows]])
-                int_z = u.Quantity([*int_z, *self.table.z[this_zr_rows]])
-                # The position of the grid elemenets in new int_r array
-                idx = np.where(int_r.argsort() - len(k) >= 0)[0]
-                int_r.sort()
-                int_z.sort()
+                if not only_gridpoint:
+                    # Mix the grid elements into the int_r array
+                    int_r = u.Quantity([*int_r, *self.table.r[this_zr_rows]])
+                    int_z = u.Quantity([*int_z, *self.table.z[this_zr_rows]])
+                    # The position of the grid elemenets in new int_r array
+                    idx = np.where(int_r.argsort() - len(k) >= 0)[0]
+                    int_r.sort()
+                    int_z.sort()
+                else:
+                    idx = np.argsort(self.table.r[this_zr_rows])
+                    int_r = self.table.r[this_zr_rows][idx]
+                    int_z = self.table.z[this_zr_rows][idx]
                 k = (int_r - r0) / (np.max(self.table.r[this_zr_rows]) - r0)
                 k_length_cm = (
                         ((int_r[-1] - int_r[0]) ** 2 + (int_z[-1] - int_z[0]) ** 2) ** 0.5

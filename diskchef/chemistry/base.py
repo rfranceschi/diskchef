@@ -40,3 +40,12 @@ class ChemistryBase:
         dvn = Divan()
         dvn.chemical_structure = table
         dvn.generate_figure_chemistry(spec1="CO", spec2="CO", normalizer=colors.LogNorm())
+
+    def plot_h2_coldens(self):
+        dvn = Divan()
+        dvn.chemical_structure = self.table
+        dvn.generate_figure(
+            r=self.table.r, z=self.table.z,
+            data1=self.table["H2 column density towards star"],
+            normalizer=colors.LogNorm(1e10, 1e30)
+        )

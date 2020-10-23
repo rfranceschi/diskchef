@@ -45,7 +45,8 @@ class ChemistryWB2014(ChemistryBase):
         self.table[f"{species} number density"] = self.table[species] * self.table["n(H+2H2)"]
         self.table[f"{species} column density towards star"] = self.physics.column_density_to(
             self.table.r, self.table.z,
-            f"{species} number density"
+            f"{species} number density",
+            only_gridpoint=True,
         )
 
         return self.table[f"{species} column density towards star"]
