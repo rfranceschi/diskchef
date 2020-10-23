@@ -1,7 +1,10 @@
 from functools import cached_property
 from dataclasses import dataclass
 
+from matplotlib import colors
 from astropy import units as u, constants as const
+
+from divan import Divan
 
 from diskchef.physics.base import PhysicsBase
 from diskchef.chemistry.abundances import Abundances
@@ -30,3 +33,19 @@ class ChemistryBase:
         """
         for species, abundance in self.initial_abundances.items():
             self.table[species] = abundance
+
+    def plot_chemistry(self, table=None):
+        if table is None:
+            table = self.table
+        dvn = Divan()
+        dvn.chemical_structure = table
+        dvn.generate_figure_chemistry(spec1="CO", spec2="CO", normalizer=colors.LogNorm())
+
+    def plot_h2_coldens(self):
+        dvn = Divan()
+        dvn.chemical_structure = self.table
+        dvn.generate_figure(
+            r=self.table.r, z=self.table.z,
+            data1=self.table["H2 column density towards star"],
+            normalizer=colors.LogNorm(1e10, 1e30)
+        )

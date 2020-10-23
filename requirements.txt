@@ -1,7 +1,10 @@
 numpy >= 1.19.0
 matplotlib >= 3.3.0
 astropy >= 4.0
-tqdm
+tqdm >= 4.0
 git+https://gitlab.com/SmirnGreg/divan.git
-
-
+pytest~=6.1.1
+scipy~=1.5.0
+setuptools~=50.3.0
+named_constants >= 1.0
+PyYAML >= 5.0

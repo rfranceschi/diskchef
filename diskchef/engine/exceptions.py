@@ -4,3 +4,7 @@ class CHEFError(Exception):
 
 class CHEFNotImplementedError(CHEFError, NotImplementedError):
     pass
+
+
+class CHEFSlowDownWarning(UserWarning):
+    pass
