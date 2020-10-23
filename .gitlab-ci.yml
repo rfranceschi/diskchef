@@ -27,7 +27,7 @@ test:
 
 pages:
   script:
-  - pip install pdoc3
+  - pip install pdoc3 pytest-cov
   - pdoc --html diskchef --overwrite
   - mv html/diskchef/ public/
   artifacts:
