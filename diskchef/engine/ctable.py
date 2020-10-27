@@ -40,13 +40,21 @@ class CTable(QTable):
     ------------ ------------
     1.000000e+00 3.000000e-04
     2.000000e+00 4.000000e+03
+    >>> # Radius, Height, and some other keywords are achievable with r, z, and other respective properties
     >>> tbl.r
     <Quantity [1., 2.] m>
+
     >>> # .name attribute is properly set for the returned Quantity
     >>> tbl['b'].name
     'b'
     >>> tbl.r.name
     'Radius'
+
+    >>> # Adding rows is not possible
+    >>> tbl.add_row([1*u.cm, 10])
+    Traceback (most recent call last):
+       ...
+    diskchef.engine.exceptions.CHEFNotImplementedError: Adding rows (grid points) is not possible in CTable
     """
 
     def __getitem__(self, item):
@@ -99,36 +107,6 @@ class CTable(QTable):
 
     def add_row(self, vals=None, mask=None):
         raise CHEFNotImplementedError("Adding rows (grid points) is not possible in CTable")
-
-    # def write_e(self, file=None, format="fixed_width", print_in_the_end: bool = True, **kwargs):
-    #     """
-    #     Write CTable with exponential format for each column
-    #
-    #     Args:
-    #         file: file for the output
-    #         format: astropy.io format
-    #         print_in_the_end: if True and file is None, print the output
-    #         **kwargs: to be passed to astropy.io.ascii.write()
-    #
-    #     Returns: if not print_in_the_end, returns formatted table as string, otherwise returns None
-    #
-    #     Usage:
-    #     >>> tbl = CTable()
-    #     >>> tbl['a'] = [1, 2]; tbl['b'] = [3e-4, 4e3] * u.m
-    #     >>> tbl # doctest: +NORMALIZE_WHITESPACE
-    #          a            b
-    #                       m
-    #     ------------ ------------
-    #     1.000000e+00 3.000000e-04
-    #     2.000000e+00 4.000000e+03
-    #     """
-    #     print_in_the_end = False
-    #     if file is None:
-    #         file = io.StringIO()
-    #         print_in_the_end = True
-    #     write(self, file, formats={column: "%e" for column in self.colnames}, format=format, **kwargs)
-    #     if print_in_the_end:
-    #         print(file.getvalue(), end='')
 
     def __repr__(self):
         for column in self.colnames:

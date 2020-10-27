@@ -18,6 +18,7 @@ class WilliamsBest2014(ParametrizedPhysics):
     https://iopscience.iop.org/article/10.1088/0004-637X/788/1/59/pdf
 
     Usage:
+
     >>> # Initializing physics class with default parameters
     >>> physics = WilliamsBest2014()
     >>> physics  # doctest: +NORMALIZE_WHITESPACE
@@ -40,7 +41,7 @@ class WilliamsBest2014(ParametrizedPhysics):
     >>> # table attribute stores the table with the model. Called first time, calculates the table
     >>> table = physics_small_grid.table
     >>> # print table with floats in exponential format
-    >>> table # doctest: +NORMALIZE_WHITESPACE
+    >>> table  # doctest: +NORMALIZE_WHITESPACE
        Radius       Height    Height to radius Gas density  Dust density Gas temperature Dust temperature
          AU           AU                         g / cm3      g / cm3           K               K
     ------------ ------------ ---------------- ------------ ------------ --------------- ----------------

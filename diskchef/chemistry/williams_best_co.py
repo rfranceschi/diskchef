@@ -5,6 +5,7 @@ from astropy import units as u
 from diskchef.chemistry.base import ChemistryBase
 from diskchef.physics.williams_best import WilliamsBest2014
 
+
 @dataclass
 class ChemistryWB2014(ChemistryBase):
     """Calculates chemistry according to Williams & Best 2014
@@ -97,6 +98,26 @@ class ChemistryWB2014(ChemistryBase):
 
 @dataclass
 class NonzeroChemistryWB2014(ChemistryWB2014):
-    """Subclass of ChemistryWB2014 that has non-zero default midplane and atmosphere abundance"""
+    """
+    Subclass of ChemistryWB2014 that has non-zero default midplane and atmosphere abundance
+
+    Usage:
+
+    >>> physics = WilliamsBest2014(radial_bins=3, vertical_bins=3)
+    >>> chemistry = NonzeroChemistryWB2014(physics)
+    >>> chemistry.run_chemistry()
+    >>> chemistry.table["CO"].info.format = "e"
+    >>> chemistry.table["CO"]
+    <Column name='CO' dtype='float64' format='e' length=9>
+    1.000000e-10
+    1.000000e-10
+    1.000000e-10
+    1.000000e-04
+    1.000000e-04
+    1.000000e-10
+    1.000000e-06
+    1.000000e-04
+    1.000000e-10
+    """
     midplane_co_abundance = 1e-6
     atmosphere_co_abundance = 1e-10
