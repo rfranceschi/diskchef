@@ -3,6 +3,7 @@ import sys
 from typing import Callable
 from functools import cached_property
 import io
+from contextlib import redirect_stdout
 
 import numpy as np
 from astropy.table import QTable
@@ -11,8 +12,8 @@ from astropy.io.ascii import write
 from named_constants import Constants
 from scipy.interpolate import griddata
 
-
 from diskchef.engine.exceptions import CHEFNotImplementedError
+
 
 class TableColumns(Constants):
     radius = 'Radius'
@@ -28,6 +29,24 @@ class CTable(QTable):
         returns appropriate columns with `r` and `z` properties
         provides `interpolate` method that returns a `Callable(r,z)`
 
+
+    Usage:
+    >>> #  __repr__() call sets formats to "e"
+    >>> tbl = CTable()
+    >>> tbl['Radius'] = [1, 2] * u.m; tbl['b'] = [3e-4, 4e3]
+    >>> tbl # doctest: +NORMALIZE_WHITESPACE
+       Radius         b
+          m
+    ------------ ------------
+    1.000000e+00 3.000000e-04
+    2.000000e+00 4.000000e+03
+    >>> tbl.r
+    <Quantity [1., 2.] m>
+    >>> # .name attribute is properly set for the returned Quantity
+    >>> tbl['b'].name
+    'b'
+    >>> tbl.r.name
+    'Radius'
     """
 
     def __getitem__(self, item):
@@ -81,11 +100,40 @@ class CTable(QTable):
     def add_row(self, vals=None, mask=None):
         raise CHEFNotImplementedError("Adding rows (grid points) is not possible in CTable")
 
-    def write_e(self, file=None, format="fixed_width", **kwargs):
-        print_in_the_end = False
-        if file is None:
-            file = io.StringIO()
-            print_in_the_end = True
-        write(self, file, formats={column: "%e" for column in self.colnames}, format=format, **kwargs)
-        if print_in_the_end:
-            print(file.getvalue(), end='')
+    # def write_e(self, file=None, format="fixed_width", print_in_the_end: bool = True, **kwargs):
+    #     """
+    #     Write CTable with exponential format for each column
+    #
+    #     Args:
+    #         file: file for the output
+    #         format: astropy.io format
+    #         print_in_the_end: if True and file is None, print the output
+    #         **kwargs: to be passed to astropy.io.ascii.write()
+    #
+    #     Returns: if not print_in_the_end, returns formatted table as string, otherwise returns None
+    #
+    #     Usage:
+    #     >>> tbl = CTable()
+    #     >>> tbl['a'] = [1, 2]; tbl['b'] = [3e-4, 4e3] * u.m
+    #     >>> tbl # doctest: +NORMALIZE_WHITESPACE
+    #          a            b
+    #                       m
+    #     ------------ ------------
+    #     1.000000e+00 3.000000e-04
+    #     2.000000e+00 4.000000e+03
+    #     """
+    #     print_in_the_end = False
+    #     if file is None:
+    #         file = io.StringIO()
+    #         print_in_the_end = True
+    #     write(self, file, formats={column: "%e" for column in self.colnames}, format=format, **kwargs)
+    #     if print_in_the_end:
+    #         print(file.getvalue(), end='')
+
+    def __repr__(self):
+        for column in self.colnames:
+            self[column].info.format = "e"
+        with io.StringIO() as buf, redirect_stdout(buf):
+            self.pprint_all()
+            output = buf.getvalue()
+        return output
