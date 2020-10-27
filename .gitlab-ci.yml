@@ -12,8 +12,8 @@ before_script:
 test:
   script:
   - pip install pytest-cov
-  - cd diskchef/tests
-  - pytest --cov diskchef
+  - cd diskchef
+  - pytest --doctest-modules --cov diskchef
 
 #run:
 #  script:

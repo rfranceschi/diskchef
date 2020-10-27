@@ -1,0 +1,1 @@
+"""Package with classes which calculate the physica structure"""

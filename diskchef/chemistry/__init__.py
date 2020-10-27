@@ -1,0 +1,1 @@
+"""Package with classes which calculate the chemical structure based on the physical structure"""

@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from functools import cached_property
 import  warnings
+import logging
 
 import scipy.integrate
 from astropy import units as u
@@ -29,6 +30,11 @@ class PhysicsBase:
     radial_bins: int = 100
     vertical_bins: int = 100
     dust_to_gas: float = 0.01
+
+    def __post_init__(self):
+        self.logger = logging.getLogger(__name__ + '.' + self.__class__.__qualname__)
+        self.logger.info("Creating an instance of %s", self.__class__.__qualname__)
+        self.logger.debug("With parameters: %s", self.__dict__)
 
     @u.quantity_input
     def gas_density(self, r: u.au, z: u.au) -> u.g / u.cm ** 3:

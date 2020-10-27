@@ -16,6 +16,46 @@ class WilliamsBest2014(ParametrizedPhysics):
     """
     Class that defines physical model as in Williams & Best 2014
     https://iopscience.iop.org/article/10.1088/0004-637X/788/1/59/pdf
+
+    Usage:
+    >>> # Initializing physics class with default parameters
+    >>> physics = WilliamsBest2014()
+    >>> physics  # doctest: +NORMALIZE_WHITESPACE
+    WilliamsBest2014(star_mass=<Quantity 1. solMass>, r_min=<Quantity 0.1 AU>, r_max=<Quantity 500. AU>,
+                     zr_max=0.7, radial_bins=100, vertical_bins=100, dust_to_gas=0.01,
+                     gas_mass=<Quantity 0.001 solMass>, tapering_radius=<Quantity 100. AU>,
+                     tapering_gamma=0.75, midplane_temperature_1au=<Quantity 200. K>,
+                     atmosphere_temperature_1au=<Quantity 1000. K>, temperature_slope=0.55,
+                     mean_molecular_mass=<Quantity 2.33 g / mol>, inner_radius=<Quantity 1. AU>)
+    >>> # Defaults can be overridden
+    >>> WilliamsBest2014(star_mass=2 * u.solMass, r_max=200 * u.au)  # doctest: +NORMALIZE_WHITESPACE
+    WilliamsBest2014(star_mass=<Quantity 2. solMass>, r_min=<Quantity 0.1 AU>, r_max=<Quantity 200. AU>,
+                     zr_max=0.7, radial_bins=100, vertical_bins=100, dust_to_gas=0.01,
+                     gas_mass=<Quantity 0.001 solMass>, tapering_radius=<Quantity 100. AU>,
+                     tapering_gamma=0.75, midplane_temperature_1au=<Quantity 200. K>,
+                     atmosphere_temperature_1au=<Quantity 1000. K>, temperature_slope=0.55,
+                     mean_molecular_mass=<Quantity 2.33 g / mol>, inner_radius=<Quantity 1. AU>)
+    >>> # Generate physics on 3x3 grid
+    >>> physics_small_grid = WilliamsBest2014(vertical_bins=3, radial_bins=3)
+    >>> # table attribute stores the table with the model. Called first time, calculates the table
+    >>> table = physics_small_grid.table
+    >>> # print table with floats in exponential format
+    >>> table.write_e()  # doctest: +NORMALIZE_WHITESPACE
+    |       Radius |       Height | Height to radius |  Gas density | Dust density | Gas temperature | Dust temperature |
+    | 1.000000e-01 | 0.000000e+00 |     0.000000e+00 | 1.153290e-06 | 1.153290e-08 |    7.096268e+02 |     7.096268e+02 |
+    | 1.000000e-01 | 3.500000e-02 |     3.500000e-01 | 5.024587e-25 | 5.024587e-27 |    3.548134e+03 |     3.548134e+03 |
+    | 1.000000e-01 | 7.000000e-02 |     7.000000e-01 | 5.921268e-63 | 5.921268e-65 |    3.548134e+03 |     3.548134e+03 |
+    | 7.071068e+00 | 0.000000e+00 |     0.000000e+00 | 2.285168e-10 | 2.285168e-12 |    6.820453e+01 |     6.820453e+01 |
+    | 7.071068e+00 | 2.474874e+00 |     3.500000e-01 | 2.716386e-14 | 2.716386e-16 |    3.410227e+02 |     3.410227e+02 |
+    | 7.071068e+00 | 4.949747e+00 |     7.000000e-01 | 7.189026e-20 | 7.189026e-22 |    3.410227e+02 |     3.410227e+02 |
+    | 5.000000e+02 | 0.000000e+00 |     0.000000e+00 | 2.871710e-17 | 2.871710e-19 |    6.555359e+00 |     6.555359e+00 |
+    | 5.000000e+02 | 1.750000e+02 |     3.500000e-01 | 6.929036e-19 | 6.929036e-21 |    2.625083e+01 |     2.625083e+01 |
+    | 5.000000e+02 | 3.500000e+02 |     7.000000e-01 | 8.170464e-20 | 8.170464e-22 |    3.277680e+01 |     3.277680e+01 |
+    >>> physics_wrong_unit = WilliamsBest2014(star_mass=2)  # Does NOT raise an exception
+    >>> physics_wrong_unit.table  # but will cause unit conversion errors later
+    Traceback (most recent call last):
+       ...
+    astropy.units.core.UnitConversionError: 'AU(3/2) J(1/2) kg(1/2) s / (g(1/2) m(3/2))' and 'AU' (length) are not convertible
     """
     gas_mass: u.solMass = 1e-3 * u.solMass
     tapering_radius: u.au = 100 * u.au

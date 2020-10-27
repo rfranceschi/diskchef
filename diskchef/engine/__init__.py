@@ -1,0 +1,1 @@
+"""Package with basic objects used in the whole project"""
