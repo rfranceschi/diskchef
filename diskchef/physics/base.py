@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from functools import cached_property
-import  warnings
+import warnings
+import logging
 
 import scipy.integrate
 from astropy import units as u
@@ -21,7 +22,11 @@ from diskchef.engine.exceptions import CHEFNotImplementedError, CHEFSlowDownWarn
 
 @dataclass
 class PhysicsBase:
-    """The base class describing the most basic parameters of the disk"""
+    """
+    The base class describing the most basic parameters of the disk
+
+    Can not be used directly, rather subclasses should be used. See `WilliamsBest2014` documentation for more details
+    """
     star_mass: u.solMass = 1 * u.solMass
     r_min: u.au = 0.1 * u.au
     r_max: u.au = 500 * u.au
@@ -29,6 +34,11 @@ class PhysicsBase:
     radial_bins: int = 100
     vertical_bins: int = 100
     dust_to_gas: float = 0.01
+
+    def __post_init__(self):
+        self.logger = logging.getLogger(__name__ + '.' + self.__class__.__qualname__)
+        self.logger.info("Creating an instance of %s", self.__class__.__qualname__)
+        self.logger.debug("With parameters: %s", self.__dict__)
 
     @u.quantity_input
     def gas_density(self, r: u.au, z: u.au) -> u.g / u.cm ** 3:
