@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from functools import cached_property
-import  warnings
+import warnings
 import logging
 
 import scipy.integrate
