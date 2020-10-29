@@ -2,7 +2,8 @@
 import sys
 from typing import Callable
 from functools import cached_property
-from collections import UserDict
+import io
+from contextlib import redirect_stdout
 
 import numpy as np
 from astropy.table import QTable
@@ -11,23 +12,12 @@ from astropy.io.ascii import write
 from named_constants import Constants
 from scipy.interpolate import griddata
 
-
 from diskchef.engine.exceptions import CHEFNotImplementedError
+
 
 class TableColumns(Constants):
     radius = 'Radius'
     height = 'Height'
-
-class DictLikeDefault(UserDict):
-    def __init__(self, default=None):
-        super(DictLikeDefault, self).__init__()
-        self.default = default
-
-    def __getitem__(self, item):
-        try:
-            super().__getitem__(item)
-        except KeyError:
-            return self.default
 
 
 class CTable(QTable):
@@ -35,10 +25,63 @@ class CTable(QTable):
     Subclass of astropy.table.Qtable for DiskCheF
 
     Features:
-        puts `name` attribute to the __getitem__ output
+
+        puts `name` attribute to the `__getitem__` output
+
         returns appropriate columns with `r` and `z` properties
+
         provides `interpolate` method that returns a `Callable(r,z)`
 
+        __repr__() call sets formats to "e"
+
+    Usage:
+
+    >>> tbl = CTable()
+    >>> tbl['Radius'] = [1, 2] * u.m; tbl['b'] = [3e-4, 4e3]
+    >>> tbl # doctest: +NORMALIZE_WHITESPACE
+       Radius         b
+          m
+    ------------ ------------
+    1.000000e+00 3.000000e-04
+    2.000000e+00 4.000000e+03
+    >>> # Radius, Height, and some other keywords are achievable with r, z, and other respective properties
+    >>> tbl.r
+    <Quantity [1., 2.] m>
+
+    >>> # .name attribute is properly set for the returned Quantity
+    >>> tbl['b'].name
+    'b'
+    >>> tbl.r.name
+    'Radius'
+
+    >>> # Adding rows is not possible
+    >>> tbl.add_row([1*u.cm, 10])
+    Traceback (most recent call last):
+       ...
+    diskchef.engine.exceptions.CHEFNotImplementedError: Adding rows (grid points) is not possible in CTable
+
+    >>> # Interpolation
+    >>> tbl = CTable()
+    >>> tbl["Radius"] = [1, 2, 3, 1, 2, 3] * u.au
+    >>> tbl["Height"] = [0, 0, 0, 1, 1, 1] * u.au
+    >>> tbl["Data"] = [2, 4, 6, 3, 5, 7] * u.K
+    >>> tbl  # doctest: +NORMALIZE_WHITESPACE
+       Radius       Height        Data
+         AU           AU           K
+    ------------ ------------ ------------
+    1.000000e+00 0.000000e+00 2.000000e+00
+    2.000000e+00 0.000000e+00 4.000000e+00
+    3.000000e+00 0.000000e+00 6.000000e+00
+    1.000000e+00 1.000000e+00 3.000000e+00
+    2.000000e+00 1.000000e+00 5.000000e+00
+    3.000000e+00 1.000000e+00 7.000000e+00
+    >>> tbl.interpolate("Data")(1.5 * u.au, 0 * u.au)
+    <Quantity 3. K>
+    >>> tbl.interpolate("Data")([1, 2.5] * u.au, [0.2, 0.8] * u.au)
+    <Quantity [2.2, 5.8] K>
+    >>> # Compatible units are allowed
+    >>> tbl.interpolate("Data")(1.5e8 * u.km, [0.2, 0.8] * u.au)
+    <Quantity [2.20537614, 2.80537614] K>
     """
 
     def __getitem__(self, item):
@@ -90,8 +133,17 @@ class CTable(QTable):
         return len(set(lengths)) == 1
 
     def add_row(self, vals=None, mask=None):
+        """
+        Adding rows (grid points) is not possible in CTable
+
+        Raises: CHEFNotImplementedError
+        """
         raise CHEFNotImplementedError("Adding rows (grid points) is not possible in CTable")
 
-    def write_e(self, file=sys.stdout, format="fixed_width", **kwargs):
-        write(self, file, formats={column: "%e" for column in self.colnames}, format=format, **kwargs)
-
+    def __repr__(self):
+        for column in self.colnames:
+            self[column].info.format = "e"
+        with io.StringIO() as buf, redirect_stdout(buf):
+            self.pprint_all()
+            output = buf.getvalue()
+        return output
