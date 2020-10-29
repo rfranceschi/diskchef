@@ -119,5 +119,5 @@ class NonzeroChemistryWB2014(ChemistryWB2014):
     1.000000e-04
     1.000000e-10
     """
-    midplane_co_abundance = 1e-6
-    atmosphere_co_abundance = 1e-10
+    midplane_co_abundance: float = 1e-6
+    atmosphere_co_abundance: float = 1e-10
