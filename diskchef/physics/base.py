@@ -22,7 +22,11 @@ from diskchef.engine.exceptions import CHEFNotImplementedError, CHEFSlowDownWarn
 
 @dataclass
 class PhysicsBase:
-    """The base class describing the most basic parameters of the disk"""
+    """
+    The base class describing the most basic parameters of the disk
+
+    Can not be used directly, rather subclasses should be used. See `WilliamsBest2014` documentation for more details
+    """
     star_mass: u.solMass = 1 * u.solMass
     r_min: u.au = 0.1 * u.au
     r_max: u.au = 500 * u.au

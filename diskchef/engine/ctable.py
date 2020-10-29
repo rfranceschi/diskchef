@@ -25,13 +25,17 @@ class CTable(QTable):
     Subclass of astropy.table.Qtable for DiskCheF
 
     Features:
-        puts `name` attribute to the __getitem__ output
+
+        puts `name` attribute to the `__getitem__` output
+
         returns appropriate columns with `r` and `z` properties
+
         provides `interpolate` method that returns a `Callable(r,z)`
 
+        __repr__() call sets formats to "e"
 
     Usage:
-    >>> #  __repr__() call sets formats to "e"
+
     >>> tbl = CTable()
     >>> tbl['Radius'] = [1, 2] * u.m; tbl['b'] = [3e-4, 4e3]
     >>> tbl # doctest: +NORMALIZE_WHITESPACE
@@ -55,6 +59,29 @@ class CTable(QTable):
     Traceback (most recent call last):
        ...
     diskchef.engine.exceptions.CHEFNotImplementedError: Adding rows (grid points) is not possible in CTable
+
+    >>> # Interpolation
+    >>> tbl = CTable()
+    >>> tbl["Radius"] = [1, 2, 3, 1, 2, 3] * u.au
+    >>> tbl["Height"] = [0, 0, 0, 1, 1, 1] * u.au
+    >>> tbl["Data"] = [2, 4, 6, 3, 5, 7] * u.K
+    >>> tbl  # doctest: +NORMALIZE_WHITESPACE
+       Radius       Height        Data
+         AU           AU           K
+    ------------ ------------ ------------
+    1.000000e+00 0.000000e+00 2.000000e+00
+    2.000000e+00 0.000000e+00 4.000000e+00
+    3.000000e+00 0.000000e+00 6.000000e+00
+    1.000000e+00 1.000000e+00 3.000000e+00
+    2.000000e+00 1.000000e+00 5.000000e+00
+    3.000000e+00 1.000000e+00 7.000000e+00
+    >>> tbl.interpolate("Data")(1.5 * u.au, 0 * u.au)
+    <Quantity 3. K>
+    >>> tbl.interpolate("Data")([1, 2.5] * u.au, [0.2, 0.8] * u.au)
+    <Quantity [2.2, 5.8] K>
+    >>> # Compatible units are allowed
+    >>> tbl.interpolate("Data")(1.5e8 * u.km, [0.2, 0.8] * u.au)
+    <Quantity [2.20537614, 2.80537614] K>
     """
 
     def __getitem__(self, item):
@@ -106,6 +133,11 @@ class CTable(QTable):
         return len(set(lengths)) == 1
 
     def add_row(self, vals=None, mask=None):
+        """
+        Adding rows (grid points) is not possible in CTable
+
+        Raises: CHEFNotImplementedError
+        """
         raise CHEFNotImplementedError("Adding rows (grid points) is not possible in CTable")
 
     def __repr__(self):
