@@ -56,11 +56,11 @@ class ChemistryWB2014(ChemistryBase):
     >>> chemistry.table is chemistry.physics.table
     True
     """
-    midplane_co_abundance = 0
-    molecular_layer_co_abundance = 1e-4
-    co_freezeout_temperature = 20 * u.K
-    atmosphere_co_abundance = 0
-    h2_column_denisty_that_shields_co = 1.3e21 / u.cm ** 2
+    midplane_co_abundance: float = 0
+    molecular_layer_co_abundance: float = 1e-4
+    co_freezeout_temperature: u.Quantity = 20 * u.K
+    atmosphere_co_abundance: float = 0
+    h2_column_denisty_that_shields_co: u.Quantity = 1.3e21 / u.cm ** 2
 
     def run_chemistry(self):
         self.table["H2"] = 0.5
