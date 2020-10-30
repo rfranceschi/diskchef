@@ -147,3 +147,6 @@ class CTable(QTable):
             self.pprint_all()
             output = buf.getvalue()
         return output
+
+    def __str__(self):
+        return self.__repr__()

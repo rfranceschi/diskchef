@@ -73,7 +73,7 @@ class ChemistryBase:
     def __post_init__(self):
         self.update_hydrogen_atom_number_density()
         self.logger = logging.getLogger(__name__ + '.' + self.__class__.__qualname__)
-        self.logger.info("Creating an instance of %s", __class__.__qualname__)
+        self.logger.info("Creating an instance of %s", self.__class__.__qualname__)
         self.logger.debug("With parameters: %s", self.__dict__)
 
     def update_hydrogen_atom_number_density(self):
