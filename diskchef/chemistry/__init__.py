@@ -7,7 +7,7 @@ Important:
 
 `ChemistryWB2014` -- realization of chemistry as described in Williams & Best, 2014
 
-`NonzeroChemistryWB2014` -- same as `ChemistryWB2014 with more realistic non-zero CO abundances outside
+`NonzeroChemistryWB2014` -- same as `ChemistryWB2014` with more realistic non-zero CO abundances outside
 of the molecular layer set by default
 
 `Abundances` -- dict-like class to store the abundances and read them from files
