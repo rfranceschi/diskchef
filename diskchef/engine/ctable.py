@@ -12,7 +12,7 @@ from astropy.io.ascii import write
 from named_constants import Constants
 from scipy.interpolate import griddata
 
-from diskchef.engine.exceptions import CHEFNotImplementedError
+from diskchef.engine.exceptions import CHEFNotImplementedError, CHEFRuntimeError
 
 
 class TableColumns(Constants):
@@ -150,3 +150,25 @@ class CTable(QTable):
 
     def __str__(self):
         return self.__repr__()
+
+    @property
+    def _dust_pop_sum(self):
+        return sum([self[f"{dust.name} mass fraction"] for dust in self.meta["Dust list"]])
+
+    @property
+    def dust_population_fully_set(self, atol=1e-5):
+        """
+        Check whether sum of mass fractions of dust populations is equal to 1
+        """
+        return np.all(abs(1 - self._dust_pop_sum) < atol)
+
+    def normalize_dust(self):
+        """
+        Normalize the dust fractions so that the sum is 1
+        """
+        pop_sum = self._dust_pop_sum
+        for dust in self.meta["Dust list"]:
+            dust.mass_fraction /= pop_sum
+            dust.write_to_ctable()
+        if not self.dust_population_fully_set:
+            raise CHEFRuntimeError
