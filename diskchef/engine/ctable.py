@@ -37,9 +37,9 @@ class CTable(QTable):
     Usage:
 
     >>> tbl = CTable()
-    >>> tbl['Radius'] = [1, 2] * u.m; tbl['b'] = [3e-4, 4e3]
+    >>> tbl['Radius'] = [1, 2] * u.m; tbl['Data'] = [3e-4, 4e3]
     >>> tbl # doctest: +NORMALIZE_WHITESPACE
-       Radius         b
+       Radius        Data
           m
     ------------ ------------
     1.000000e+00 3.000000e-04
@@ -49,8 +49,8 @@ class CTable(QTable):
     <Quantity [1., 2.] m>
 
     >>> # .name attribute is properly set for the returned Quantity
-    >>> tbl['b'].name
-    'b'
+    >>> tbl['Data'].name
+    'Data'
     >>> tbl.r.name
     'Radius'
 
@@ -169,6 +169,6 @@ class CTable(QTable):
         pop_sum = self._dust_pop_sum
         for dust in self.meta["Dust list"]:
             dust.mass_fraction /= pop_sum
-            dust.write_to_ctable()
+            dust.write_to_table()
         if not self.dust_population_fully_set:
             raise CHEFRuntimeError

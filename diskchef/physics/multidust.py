@@ -21,6 +21,7 @@ class DustPopulation:
         average_size_for_chemistry:  average grain size weighted by surface area, see Vasyunin et al. 2011 Eq. 9
         (https://iopscience.iop.org/article/10.1088/0004-637X/727/2/76/pdf)
 
+
     Usage:
 
     >>> # If the name is not set, use index of the created dust (unsafe!)
@@ -36,7 +37,7 @@ class DustPopulation:
     >>> table["Dust density"] = [100, 10, 1] * u.g / u.cm ** 3 * 1e-15
     >>> table["Dust temperature"] = [100, 50, 25] * u.K
     >>> dust = DustPopulation("some_opacity.inp", table=table, name="Default dust")
-    >>> dust.write_to_ctable()
+    >>> dust.write_to_table()
     >>> table  # doctest: +NORMALIZE_WHITESPACE
        Radius    Dust density Dust temperature Default dust mass fraction Default dust number density Default dust temperature Default dust surface area per volume
          AU        g / cm3           K                                              1 / cm3                      K                            1 / cm
@@ -48,7 +49,7 @@ class DustPopulation:
     'Default dust'
 
     >>> dust_large = DustPopulation("large_opacity.inp", table=table, name="Large dust", mass_fraction=0.3, average_size_for_chemistry=1*u.cm)
-    >>> dust_large.write_to_ctable()
+    >>> dust_large.write_to_table()
     >>> table  # doctest: +NORMALIZE_WHITESPACE
        Radius    Dust density Dust temperature Default dust mass fraction Default dust number density Default dust temperature Default dust surface area per volume Large dust mass fraction Large dust number density Large dust temperature Large dust surface area per volume
          AU        g / cm3           K                                              1 / cm3                      K                            1 / cm                                                  1 / cm3                    K                          1 / cm
@@ -78,9 +79,9 @@ class DustPopulation:
     >>> table["Radius"] = [1, 2, 3] * u.au
     >>> table["Dust density"] = [100, 10, 1] * u.g / u.cm ** 3 * 1e-15
     >>> dust = DustPopulation("some_opacity.inp", table=table, name="Default dust", mass_fraction=[0.8, 0.7, 0.5])
-    >>> dust.write_to_ctable()
+    >>> dust.write_to_table()
     >>> dust_large = DustPopulation("large_opacity.inp", table=table, name="Large dust", mass_fraction=[0.2, 0.3, 0.5], average_size_for_chemistry=1*u.cm)
-    >>> dust_large.write_to_ctable()
+    >>> dust_large.write_to_table()
     >>> table  # doctest: +NORMALIZE_WHITESPACE
        Radius    Dust density Default dust mass fraction Default dust number density Default dust temperature Default dust surface area per volume Large dust mass fraction Large dust number density Large dust temperature Large dust surface area per volume
          AU        g / cm3                                         1 / cm3                      K                            1 / cm                                                  1 / cm3                    K                          1 / cm
@@ -93,7 +94,7 @@ class DustPopulation:
 
     >>> # Rescaling also works if mass fractions are given independently
     >>> dust_asteroid = DustPopulation("asteroid_opacity.inp", table=table, name="Asteroids", mass_fraction=[0.5, 0.3, 0.5], average_size_for_chemistry=1*u.km)
-    >>> dust_asteroid.write_to_ctable()
+    >>> dust_asteroid.write_to_table()
     >>> table.dust_population_fully_set
     False
     >>> table.normalize_dust()
@@ -141,7 +142,12 @@ class DustPopulation:
 
     @property
     @u.quantity_input
-    def surface_area_per_volume(self) -> 1 / u.cm:
+    def surface_area_per_volume(self) -> u.cm ** (-1):
+        """
+        Surface area per volume unit, important for chemistry
+
+        Assumes spherical grains in default setup
+        """
         return 4 * np.pi * self.average_size_for_chemistry ** 2 * self.number_density
 
     @property
@@ -155,14 +161,27 @@ class DustPopulation:
             else:
                 return np.nan * u.K
 
-    def write_to_ctable(self, table: CTable = None):
-        dust_name = self.name
+    def write_to_table(self, table: CTable = None):
+        """
+        Write the dust population in the table
+
+        Args:
+            `table`: if given, writes the data in this table. Else, writes in `self.table`
+
+        Adds columns
+            "{self.name} mass fraction"
+            "{self.name} number density"
+            "{self.name} temperature"
+            "{self.name} surface area per volume"
+
+        Also adds `self` to `table.meta["Dust list"]`
+        """
         if table is None:
             table = self.table
-        table[f"{dust_name} mass fraction"] = self.mass_fraction
-        table[f"{dust_name} number density"] = self.number_density
-        table[f"{dust_name} temperature"] = self.temperature
-        table[f"{dust_name} surface area per volume"] = self.surface_area_per_volume
+        table[f"{self.name} mass fraction"] = self.mass_fraction
+        table[f"{self.name} number density"] = self.number_density
+        table[f"{self.name} temperature"] = self.temperature
+        table[f"{self.name} surface area per volume"] = self.surface_area_per_volume
         try:
             if self not in table.meta["Dust list"]:
                 table.meta["Dust list"].append(self)
