@@ -7,7 +7,7 @@ import diskchef.lamda
 
 
 def test_lamda_is_found():
-    files = glob(os.path.join(diskchef.lamda.__path__[0], "*.dat"))
+    files = glob(os.path.join(diskchef.lamda.__path__[0], "files", "*.dat"))
     assert "13co.dat" in [os.path.basename(file) for file in files]
 
 
@@ -21,4 +21,4 @@ def test_lamda_is_found():
     ]
 )
 def test_get_lamda(species, expected):
-    assert len(diskchef.lamda.get_file(species)) == expected
+    assert len(diskchef.lamda.file(species)) == expected
