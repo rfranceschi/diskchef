@@ -7,6 +7,8 @@ class CHEFNotImplementedError(CHEFError, NotImplementedError):
     """Exception raised by base classes methods which only define interface for child classes"""
     pass
 
+class CHEFValueError(CHEFError, ValueError):
+    """Exception raised when the argument to the function is wrong"""
 
 class CHEFRuntimeError(CHEFError, RuntimeError):
     """Exception raised in other cases"""
