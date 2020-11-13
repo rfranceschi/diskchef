@@ -11,7 +11,7 @@ setup(
     author_email='smirnov@mpia.de',
     description='Tool to retrieve chemical and physical parameters out of submm observations',
     install_requires=[
-        'numpy >= 1.19.0',
+        'numpy >= 1.18.0',
         'matplotlib >= 3.3.0',
         'astropy >= 4.0',
         'scipy >= 1.5',
