@@ -5,6 +5,7 @@
 
 # User-specific stuff
 .idea
+.vscode
 
 .idea/**/workspace.xml
 .idea/**/tasks.xml
