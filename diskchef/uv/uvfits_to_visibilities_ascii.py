@@ -21,7 +21,7 @@ class UVFits:
     >>> uv = UVFits(os.path.join(os.path.dirname(__file__), "..", "tests", "data", "s-Wide-1+C.uvfits"))
     >>> uv.table[0:5].pprint_all()  # doctest: +NORMALIZE_WHITESPACE
              u                   v                   Re                    Im                 Weight
-             m                   m                   Jy                    Jy
+             m                   m                   Jy                    Jy                  Jy2
     ------------------- ------------------- -------------------- --------------------- -------------------
     -0.8546872724500936 -111.88782560913619  0.08782878543466197   0.03792351358711706 0.20431383019990396
       35.68536730327412   61.11044271472704    0.155928085996764  0.033993665872594336 0.22821656060995169
@@ -38,7 +38,7 @@ class UVFits:
         data = self.fits['DATA'][:, 0, 0, 0, channel, 0, :]
         self.re = data[:, 0].data << u.Jy
         self.im = data[:, 1].data << u.Jy
-        self.weight = data[:, 2].data << u.dimensionless_unscaled
+        self.weight = data[:, 2].data << (u.Jy ** 2)
         self.table['u'] = self.u
         self.table['v'] = self.v
         self.table['Re'] = self.re

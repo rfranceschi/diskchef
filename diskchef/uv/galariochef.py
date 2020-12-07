@@ -46,5 +46,5 @@ class Residual:
             v=(data.v / data.wavelength).to(u.dimensionless_unscaled).value,
             vis_obs_re=data.re.to(u.Jy).value,
             vis_obs_im=data.im.to(u.Jy).value,
-            vis_obs_w=data.weight.to(u.dimensionless_unscaled).value,
+            vis_obs_w=data.weight.to(u.Jy ** 2).value,
         )
