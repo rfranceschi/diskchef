@@ -118,7 +118,9 @@ class CTable(QTable):
                 values=self[column],
                 xi=(r.to(u.au).value, z.to(u.au).value),
                 fill_value=0
-            ) << self[column].unit
+            )
+            if self[column].unit:
+                interpolated = interpolated << self[column].unit
             return interpolated
 
         return _interpolation

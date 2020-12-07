@@ -8,9 +8,14 @@ from diskchef.chemistry.base import ChemistryBase
 
 @dataclass
 class Line:
+    """
+    todo: add post_init
+    """
     name: str
     transition: str
     molecule: str
+    collision_partner: tuple = ('H2',)
+
 
 @dataclass
 class MapBase:
