@@ -1,7 +1,6 @@
 from dataclasses import dataclass
 from typing import List
-
-from astropy import units as u
+import logging
 
 from diskchef.chemistry.base import ChemistryBase
 
@@ -12,7 +11,7 @@ class Line:
     todo: add post_init
     """
     name: str
-    transition: str
+    transition: int
     molecule: str
     collision_partner: tuple = ('H2',)
 
@@ -22,6 +21,11 @@ class MapBase:
     """The base class for map generation"""
     chemistry: ChemistryBase = None
     line_list: List[Line] = None
+
+    def __post_init__(self):
+        self.logger = logging.getLogger(__name__ + '.' + self.__class__.__qualname__)
+        self.logger.info("Creating an instance of %s", self.__class__.__qualname__)
+        self.logger.debug("With parameters: %s", self.__dict__)
 
     @property
     def table(self):

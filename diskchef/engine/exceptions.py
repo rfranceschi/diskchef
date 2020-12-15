@@ -18,6 +18,9 @@ class CHEFWarning(UserWarning):
     """Base class for diskchef warningns"""
     pass
 
+class RADMCWarning(CHEFWarning):
+    """Base class for radmc warningns"""
+    pass
 
 class CHEFValueWarning(CHEFWarning):
     """Warning issued when the values are not properly set, but it is not critical"""
