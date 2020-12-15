@@ -19,6 +19,20 @@ setup(
         'tqdm',
         'divan @ git+https://gitlab.com/SmirnGreg/divan.git',
         'PyYAML >= 5.0',
+        'uvplot',
+        'radmc3dPy @ git+https://github.com/dullemond/radmc3d-2.0.git#subdirectory=python/radmc3dPy',
     ],
     python_requires=">=3.8",
 )
+
+try:
+    import galario
+except ImportError as err1:
+    print(err1)
+    print("Install galario:")
+    print("$ conda install -c conda-forge galario")
+
+
+
+
+
