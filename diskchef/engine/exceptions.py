@@ -8,7 +8,10 @@ class CHEFNotImplementedError(CHEFError, NotImplementedError):
     pass
 
 class CHEFValueError(CHEFError, ValueError):
-    """Exception raised when the argument to the function is wrong"""
+    """Exception raised when the value of argument to the function is wrong"""
+
+class CHEFTypeError(CHEFError, TypeError):
+    """Exception raised when the type of argument is wrong"""
 
 class CHEFRuntimeError(CHEFError, RuntimeError):
     """Exception raised in other cases"""

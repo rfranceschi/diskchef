@@ -1,29 +1,24 @@
 import glob
-from typing import Union
 import os
 import shutil
-from collections import Counter
 from dataclasses import dataclass
 import subprocess
 import re
 import time
-from warnings import warn
 
-PathLike = Union[str, os.PathLike]
-
+from diskchef.engine.other import PathLike
 import numpy as np
 
 from astropy import units as u
 from astropy import constants as c
-from astropy.io import fits
 
 from matplotlib import pyplot as plt
-from matplotlib.colors import LogNorm, Normalize
+from matplotlib.colors import Normalize
 
 import radmc3dPy
 
 from diskchef.maps.base import MapBase, Line
-from diskchef.engine.exceptions import CHEFNotImplementedError, RADMCWarning
+from diskchef.engine.exceptions import CHEFNotImplementedError
 from diskchef.engine.ctable import CTable
 from diskchef.lamda import file
 
