@@ -38,14 +38,14 @@ class Residual:
     >>> math.isclose(residual.chi, 2162.243303848548, rel_tol=1e-4)
     True
 
-    >>> data = UVFits(os.path.join(os.path.dirname(__file__), "..", "tests", "data", "s-Line-22-CO_1+D.uvfits"), 'all', sum=False)
-    >>> model = radmc3dPy.image.readImage(
-    ...     os.path.join(os.path.dirname(__file__), "..", "tests", "data", "radmc", "image.out")
-    ... )  # doctest: +ELLIPSIS
-    Reading ...image.out
-    >>> residual = Residual(model=model, data=data, distance=150 * u.pc)
-    >>> math.isclose(residual.chi, 2162.243303848548, rel_tol=1e-4)
-    True
+    # >>> data = UVFits(os.path.join(os.path.dirname(__file__), "..", "tests", "data", "s-Line-22-CO_1+D.uvfits"), 'all', sum=False)
+    # >>> model = radmc3dPy.image.readImage(
+    # ...     os.path.join(os.path.dirname(__file__), "..", "tests", "data", "radmc", "image.out")
+    # ... )  # doctest: +ELLIPSIS
+    # Reading ...image.out
+    # >>> residual = Residual(model=model, data=data, distance=150 * u.pc)
+    # >>> math.isclose(residual.chi, 2162.243303848548, rel_tol=1e-4)
+    # True
     """
 
     def __init__(
