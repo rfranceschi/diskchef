@@ -17,7 +17,8 @@ from matplotlib.colors import Normalize
 
 import radmc3dPy
 
-from diskchef.maps.base import MapBase, Line
+from diskchef.maps.base import MapBase
+from diskchef.lamda.line import Line
 from diskchef.engine.exceptions import CHEFNotImplementedError
 from diskchef.engine.ctable import CTable
 from diskchef.lamda import file
@@ -35,6 +36,11 @@ class RadMCRT(MapBase):
         super(RadMCRT, self).__post_init__()
         if not self.table.is_in_zr_regular_grid:
             raise CHEFNotImplementedError
+
+        try:
+            os.mkdir(self.folder)
+        except FileExistsError:
+            self.logger.warn("Directory %s already exists! The results can be biased.")
 
         radii = np.sort(np.unique(self.table.r)).to(u.cm)
         zr = np.sort(np.unique(self.table.zr))
@@ -318,3 +324,22 @@ class RadMCVisualize:
             clbr = fig.colorbar(cbim, cax=cbaxes)
             fig.suptitle(file)
             fig.savefig(file + ".png")
+
+
+@dataclass
+class RadMCRTSingleCall(RadMCRT):
+    """Subclass of RadMCRT to run RadMC only once for all the required frequencies"""
+
+    def camera_wavelength_micron(self, out_file: PathLike = None, channels_per_line: int = 100) -> None:
+        """Creates a `camera_wavelength_micron.inp` file with all the frequencies for all the lines"""
+
+        if out_file is None:
+            out_file = os.path.join(self.folder, 'camera_wavelength_micron.inp')
+
+        for line in self.line_list:
+            pass
+        wavelengths = np.geomspace(0.1, 1000, 100)
+
+        with open(out_file, 'w') as file:
+            print(len(wavelengths), file=file)
+            print('\n'.join(f"{entry:.7e}" for entry in wavelengths), file=file)

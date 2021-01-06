@@ -2,18 +2,13 @@ from dataclasses import dataclass
 from typing import List
 import logging
 
+from astropy import units as u
+
 from diskchef.chemistry.base import ChemistryBase
-
-
-@dataclass
-class Line:
-    """
-    todo: add post_init
-    """
-    name: str
-    transition: int
-    molecule: str
-    collision_partner: tuple = ('H2',)
+from diskchef.engine.other import PathLike
+from diskchef.engine.ctable import CTable
+import diskchef.lamda
+from diskchef.lamda.line import Line
 
 
 @dataclass

@@ -7,7 +7,7 @@ import logging
 from diskchef.physics.williams_best import WilliamsBest2014
 from diskchef.chemistry.williams_best_co import NonzeroChemistryWB2014
 from diskchef.maps.radmcrt import RadMCRT
-from diskchef.maps.base import Line
+from diskchef.lamda.line import Line
 
 logging.basicConfig(
     level=logging.DEBUG,
