@@ -1,11 +1,20 @@
 import glob
+import typing
+
+import tempfile
+
+import sys
+
 import os
 import shutil
 from dataclasses import dataclass
 import subprocess
 import re
 import time
+from datetime import timedelta
 
+import diskchef.chemistry
+import diskchef.physics
 from diskchef.engine.other import PathLike
 import numpy as np
 
@@ -40,7 +49,7 @@ class RadMCRT(MapBase):
         try:
             os.mkdir(self.folder)
         except FileExistsError:
-            self.logger.warn("Directory %s already exists! The results can be biased.")
+            self.logger.warn("Directory %s already exists! The results can be biased.", self.folder)
 
         radii = np.sort(np.unique(self.table.r)).to(u.cm)
         zr = np.sort(np.unique(self.table.zr))
@@ -64,10 +73,10 @@ class RadMCRT(MapBase):
 
         self.nrcells = (len(self.radii_edges) - 1) * (len(self.theta_edges) - 1)
 
-    def interpolate(self, column: str):
+    def interpolate(self, column: str) -> None:
         self.polar_table[column] = self.table.interpolate(column)(self.polar_table.r, self.polar_table.z)
 
-    def create_files(self):
+    def create_files(self) -> None:
         self.radmc3d()
         self.wavelength_micron()
         self.amr_grid()
@@ -224,8 +233,8 @@ class RadMCRT(MapBase):
             self,
             inclination: u.deg = 0 * u.deg, position_angle: u.deg = 0 * u.deg,
             distance: u.pc = 140 * u.pc, velocity_offset: u.km / u.s = 0 * u.km / u.s,
-            doppcatch: bool = False, threads: int = 1
-    ):
+            threads: int = 1,
+    ) -> None:
         self.logger.info("Running radmc3d")
         for line in self.line_list:
             self._run_single(
@@ -235,15 +244,14 @@ class RadMCRT(MapBase):
                 velocity_offset=velocity_offset.to(u.km / u.s).value,
                 name=f"{line.name}_image.out",
                 distance=distance.to(u.pc).value,
-                doppcatch=doppcatch,
                 threads=threads
             )
 
     def _run_single(
             self, molecule: int, line: int, inclination: float = 0, position_angle: float = 0,
-            name: PathLike = None, distance: float = 140, doppcatch: bool = False, velocity_offset: float = 0,
+            name: PathLike = None, distance: float = 140, velocity_offset: float = 0,
             n_channels: int = 100, threads: int = 1
-    ):
+    ) -> None:
         start = time.time()
         command = (f"{self.executable} image "
                    f"imolspec {molecule} "
@@ -254,7 +262,6 @@ class RadMCRT(MapBase):
                    f"vkms {velocity_offset} "
                    f"linenlam {n_channels} "
                    f"setthreads {threads} "
-                   # + "doppcatch " if doppcatch else " "
                    )
         self.logger.info("Running radmc3d for molecule %d and transition %d: %s", molecule, line, command)
         proc = subprocess.run(
@@ -264,31 +271,33 @@ class RadMCRT(MapBase):
             capture_output=True,
             shell=True
         )
-        self.logger.info("radmc3d finished after %7.2e s", time.time() - start)
+        self.logger.info("radmc3d finished after %s", timedelta(seconds=time.time() - start))
+        self.catch_radmc_messages(proc)
+
+        if name is not None:
+            newname = os.path.join(self.folder, name)
+            shutil.move(os.path.join(self.folder, "image.out"), newname)
+            self.radmc_to_fits(newname, self.line_list[line], distance)
+
+    def radmc_to_fits(self, name: PathLike, line: Line, distance: float) -> None:
+        """Saves RadMC3D `image.out` file as FITS file"""
+        im = radmc3dPy.image.readImage(fname=name)
+        fitsname = name.replace(".out", ".fits")
+        restfreq = line.frequency.to(u.Hz).value
+        if os.path.exists(fitsname):
+            os.remove(fitsname)
+        im.writeFits(fname=fitsname, nu0=restfreq, dpc=distance,
+                     fitsheadkeys={"CUNIT3": "Hz", "BUNIT": "Jy pix**(-1)", "RESTFREQ": restfreq})
+        self.logger.info("Saved as %s and %s", name, fitsname)
+        self.logger.debug("Modified FITS header unit: HZ to Hz, JY/PX to Jy pix**(-1), set RESTFREQ %s Hz",
+                          restfreq)
+
+    def catch_radmc_messages(self, proc: subprocess.CompletedProcess) -> None:
+        """Raises RadMC warnings and errors in `self.logger`"""
         if proc.stderr: self.logger.error(proc.stderr)
         self.logger.debug(proc.stdout)
         for match in re.finditer(r"WARNING:(.*\n(?:  .*\n){2,})", proc.stdout):
             self.logger.warn(match.group(1))
-        if name is not None:
-            newname = os.path.join(self.folder, name)
-            shutil.move(os.path.join(self.folder, "image.out"), newname)
-            im = radmc3dPy.image.readImage(fname=newname)
-            fitsname = newname.replace(".out", ".fits")
-            molfile = radmc3dPy.molecule.radmc3dMolecule()
-            molfile.read(fname=os.path.join(self.folder, f"molecule_{self.molecules_list[molecule - 1]}.inp"))
-            restfreq = molfile.freq[line - 1]
-            if os.path.exists(fitsname):
-                os.remove(fitsname)
-            im.writeFits(fname=fitsname, nu0=restfreq, dpc=distance,
-                         fitsheadkeys={"CUNIT3": "Hz", "BUNIT": "Jy pix**(-1)", "RESTFREQ": restfreq})
-            self.logger.info("Saved as %s and %s", newname, fitsname)
-            # with fits.open(fitsname, 'update') as f:
-            #     for hdu in f:
-            #         hdu.header['CUNIT3'] = "      Hz"
-            #         hdu.header['BUNIT'] = "  Jy/pix"
-            #         hdu.header['RESTFREQ'] = restfreq
-            self.logger.debug("Modified FITS header unit: HZ to Hz, JY/PX to Jy pix**(-1), set RESTFREQ %s Hz",
-                              restfreq)
 
 
 @dataclass
@@ -328,18 +337,121 @@ class RadMCVisualize:
 
 @dataclass
 class RadMCRTSingleCall(RadMCRT):
-    """Subclass of RadMCRT to run RadMC only once for all the required frequencies"""
+    """
+    Subclass of RadMCRT to run RadMC only once for all the required frequencies
 
-    def camera_wavelength_micron(self, out_file: PathLike = None, channels_per_line: int = 100) -> None:
+    Usage:
+
+    >>> physics = diskchef.physics.WilliamsBest2014(star_mass=0.52 * u.solMass, radial_bins=10, vertical_bins=10)
+    >>> chem = diskchef.chemistry.NonzeroChemistryWB2014(physics)
+    >>> chem.run_chemistry()
+    >>> mapping = RadMCRTSingleCall(chemistry=chem, line_list=[
+    ...     Line(name='CO J=2-1', transition=1, molecule='CO'),
+    ...     Line(name='CO J=3-2', transition=2, molecule='CO'),
+    ... ])
+    >>> mapping.wavelength_multiple_lines(channels_per_line=5, window_width=2 * u.km/u.s)  # doctest: +NORMALIZE_WHITESPACE
+    array([2600.76630869, 2600.76197107, 2600.75763346, 2600.75329588,
+           2600.7489583 , 1300.40799349, 1300.40582464, 1300.4036558 ,
+           1300.40148696, 1300.39931813])
+    """
+
+    def frequency_centers(self) -> typing.List[u.Quantity]:
+        """Fetches frequencies of lines from `self.line_list`"""
+        for line in self.line_list:
+            line.parse_lamda()
+        self.ordered_line_list = sorted(self.line_list, key=lambda line: line.frequency)
+        frequency_centers = [line.frequency for line in self.ordered_line_list]
+        return frequency_centers
+
+    def wavelength_multiple_lines(self, channels_per_line: int, window_width: u.km / u.s) -> np.ndarray:
+        """
+        Return a sorted array of wavelength for all the lines, in um (unitless)
+        """
+        frequencies_list = []
+        self.channels_per_line = []
+        for frequency_center in self.frequency_centers():
+            width = np.abs(window_width.to(u.GHz, equivalencies=u.doppler_radio(frequency_center)) - frequency_center)
+            frequencies_list.append(
+                np.linspace(frequency_center - width / 2, frequency_center + width / 2, channels_per_line)
+            )
+            self.channels_per_line.append(channels_per_line)
+        frequencies = np.hstack(frequencies_list)
+        wavelengths = frequencies.to(u.um, equivalencies=u.spectral()).value
+        return wavelengths
+
+    @u.quantity_input
+    def camera_wavelength_micron(
+            self,
+            out_file: PathLike = None,
+            window_width: u.km / u.s = 6 * u.km / u.s,
+            channels_per_line: int = 200
+    ) -> None:
         """Creates a `camera_wavelength_micron.inp` file with all the frequencies for all the lines"""
-
+        wavelengths = self.wavelength_multiple_lines(channels_per_line, window_width)
         if out_file is None:
             out_file = os.path.join(self.folder, 'camera_wavelength_micron.inp')
-
-        for line in self.line_list:
-            pass
-        wavelengths = np.geomspace(0.1, 1000, 100)
-
         with open(out_file, 'w') as file:
             print(len(wavelengths), file=file)
-            print('\n'.join(f"{entry:.7e}" for entry in wavelengths), file=file)
+            print('\n'.join(f"{entry:.10e}" for entry in wavelengths), file=file)
+
+    def create_files(self) -> None:
+        super().create_files()
+        self.camera_wavelength_micron()
+
+    @u.quantity_input
+    def run(
+            self,
+            inclination: u.deg = 0 * u.deg, position_angle: u.deg = 0 * u.deg,
+            distance: u.pc = 140 * u.pc, velocity_offset: u.km / u.s = 0 * u.km / u.s,
+            threads: int = 1
+    ) -> None:
+        self.logger.info("Running radmc3d")
+        start = time.time()
+        command = (f"{self.executable} image "
+                   f"incl {inclination.to(u.deg).value} "
+                   f"posang {position_angle.to(u.deg).value} "
+                   f"setthreads {threads} "
+                   "loadlambda "
+                   )
+        self.logger.info("Running radmc3d for all transition at once: %s", command)
+        proc = subprocess.run(
+            command,
+            cwd=self.folder,
+            text=True,
+            capture_output=True,
+            shell=True
+        )
+        self.logger.info("radmc3d finished after %s", timedelta(seconds=time.time() - start))
+        self.catch_radmc_messages(proc)
+        names = [os.path.join(self.folder, f"{line.name}_image.out") for line in self.ordered_line_list]
+        self.split(names=names)
+        for line, name in zip(self.ordered_line_list, names):
+            self.radmc_to_fits(name, line, distance.to(u.pc).value)
+
+    def split(
+            self, filename=None,
+            names: typing.List[PathLike] = None
+    ):
+        """Split the `image.out` file with all lines into multiple single-frequency files"""
+        lengths = self.channels_per_line
+        if filename is None:
+            filename = os.path.join(self.folder, 'image.out')
+
+        with open(filename, 'r') as bigfile:
+            files = [open(name, 'w') for name in names]
+            header = [next(bigfile) for _ in range(4)]
+            px_number = [int(entry) for entry in header[1].split()]
+            for file, length in zip(files, lengths):
+                file.write(header[0])
+                file.write(header[1])
+                file.write(str(length) + "\n")
+                file.write(header[3])
+                for line in range(length):
+                    file.write(next(bigfile))
+
+            for file, length in zip(files, lengths):
+                for line in range(length * (px_number[0] * px_number[1] + 1)):
+                    file.write(next(bigfile))
+
+            for file in files:
+                file.close()
