@@ -167,7 +167,7 @@ class RadMCRT(MapBase):
             print(
                 '\n'.join(
                     f"{entry:.7e}" for entry
-                    in self.polar_table['n(H+2H2)'].to(u.cm ** (-3)).value * self.table[species]),
+                    in self.polar_table['n(H+2H2)'].to(u.cm ** (-3)).value * self.polar_table[species]),
                 file=file
             )
 
