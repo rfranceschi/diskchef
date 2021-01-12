@@ -1,6 +1,6 @@
 numpy >= 1.18.0
 matplotlib >= 3.3.0
-astropy >= 4.0
+astropy >= 4.1.1
 tqdm >= 4.0
 git+https://gitlab.com/SmirnGreg/divan.git
 pytest~=6.1.1

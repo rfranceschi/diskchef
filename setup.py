@@ -13,7 +13,7 @@ setup(
     install_requires=[
         'numpy >= 1.18.0',
         'matplotlib >= 3.3.0',
-        'astropy >= 4.0',
+        'astropy >= 4.1.1',
         'scipy >= 1.5',
         'named_constants',
         'tqdm',

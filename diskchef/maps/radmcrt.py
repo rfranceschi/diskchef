@@ -1,10 +1,6 @@
 import glob
 import typing
 
-import tempfile
-
-import sys
-
 import os
 import shutil
 from dataclasses import dataclass
@@ -13,7 +9,6 @@ import re
 import time
 from datetime import timedelta
 
-import diskchef.chemistry
 import diskchef.physics
 from diskchef.engine.other import PathLike
 import numpy as np
@@ -34,8 +29,19 @@ from diskchef.lamda import file
 
 
 @dataclass
+class RadMCOutput:
+    """Class to store information about the RadMCRT module output"""
+    line: Line
+    file_radmc: PathLike = None
+    file_fits: PathLike = None
+
+
+@dataclass
 class RadMCRT(MapBase):
     """
+    Class with interface to run RadMC3D by Cornelis Dullemond
+
+    By initialization creates the basic table (`self.polar_table`) with the grid in polar RadMC3D coordinates.
     """
     executable: PathLike = 'radmc3d'
     verbosity: int = 0
@@ -72,11 +78,16 @@ class RadMCRT(MapBase):
             np.sqrt(c.G * self.chemistry.physics.star_mass / self.polar_table['Radius']).to(u.cm / u.s)
 
         self.nrcells = (len(self.radii_edges) - 1) * (len(self.theta_edges) - 1)
+        self.fitsfiles = []
+        """List of created FITS files"""
+        self.outputs = {}
 
     def interpolate(self, column: str) -> None:
+        """Adds a new `column` to `self.polar_table` with the data iterpolated from `self.table`"""
         self.polar_table[column] = self.table.interpolate(column)(self.polar_table.r, self.polar_table.z)
 
     def create_files(self) -> None:
+        """Creates all the files necessary to run RadMC3D"""
         self.radmc3d()
         self.wavelength_micron()
         self.amr_grid()
@@ -111,12 +122,7 @@ class RadMCRT(MapBase):
             print('\n'.join(f"{entry:.7e}" for entry in wavelengths), file=file)
 
     def amr_grid(self, out_file: PathLike = None) -> None:
-        """
-        Can call the method using out_file=sys.stdout
-
-        Returns:
-
-        """
+        """Creates a `amr_grid.inp` file"""
 
         if not self.table.is_in_zr_regular_grid:
             raise CHEFNotImplementedError
@@ -135,12 +141,7 @@ class RadMCRT(MapBase):
             print(0, 2 * np.pi, file=file)
 
     def gas_temperature(self, out_file: PathLike = None) -> None:
-        """
-        Writes the gas temperature file
-    
-        Returns:
-    
-        """
+        """Writes the gas temperature file"""
 
         if out_file is None:
             out_file = os.path.join(self.folder, 'gas_temperature.inp')
@@ -153,12 +154,7 @@ class RadMCRT(MapBase):
             print('\n'.join(f"{entry:.7e}" for entry in self.polar_table['Gas temperature'].to(u.K).value), file=file)
 
     def numberdens(self, species: str, out_file: PathLike = None) -> None:
-        """
-        Writes the gas number density file
-    
-        Returns:
-    
-        """
+        """Writes the gas number density file"""
 
         if out_file is None:
             out_file = os.path.join(self.folder, f'numberdens_{species}.inp')
@@ -177,13 +173,9 @@ class RadMCRT(MapBase):
 
     def molecule(self, species: str, out_file: PathLike = None) -> None:
         """
-        Writes the molecule transition file
+        Copies the molecule transition file into working directory
 
         species:    str     name of the molecule
-
-    
-        Returns:
-    
         """
 
         if out_file is None:
@@ -192,9 +184,6 @@ class RadMCRT(MapBase):
         shutil.copy(file(species)[0], out_file)
 
     def lines(self, out_file: PathLike = None) -> None:
-        """
-        """
-
         self.molecules_list = sorted(list(set([line.molecule for line in self.line_list])))
 
         if out_file is None:
@@ -209,14 +198,6 @@ class RadMCRT(MapBase):
                 print('\n'.join(coll_partners), file=file)
 
     def gas_velocity(self, out_file: PathLike = None) -> None:
-        """
-
-        Args:
-            out_file:
-
-        Returns:
-
-        """
 
         if out_file is None:
             out_file = os.path.join(self.folder, 'gas_velocity.inp')
@@ -235,6 +216,7 @@ class RadMCRT(MapBase):
             distance: u.pc = 140 * u.pc, velocity_offset: u.km / u.s = 0 * u.km / u.s,
             threads: int = 1,
     ) -> None:
+        """Run RadMC3D after files were created with `create_files()`"""
         self.logger.info("Running radmc3d")
         for line in self.line_list:
             self._run_single(
@@ -244,13 +226,14 @@ class RadMCRT(MapBase):
                 velocity_offset=velocity_offset.to(u.km / u.s).value,
                 name=f"{line.name}_image.out",
                 distance=distance.to(u.pc).value,
-                threads=threads
+                threads=threads,
+                lineobj=line
             )
 
     def _run_single(
             self, molecule: int, line: int, inclination: float = 0, position_angle: float = 0,
             name: PathLike = None, distance: float = 140, velocity_offset: float = 0,
-            n_channels: int = 100, threads: int = 1
+            n_channels: int = 100, threads: int = 1, lineobj: Line = None
     ) -> None:
         start = time.time()
         command = (f"{self.executable} image "
@@ -273,14 +256,20 @@ class RadMCRT(MapBase):
         )
         self.logger.info("radmc3d finished after %s", timedelta(seconds=time.time() - start))
         self.catch_radmc_messages(proc)
-
+        output = RadMCOutput(lineobj)
         if name is not None:
             newname = os.path.join(self.folder, name)
             shutil.move(os.path.join(self.folder, "image.out"), newname)
-            self.radmc_to_fits(newname, self.line_list[line], distance)
+            output.file_radmc = newname
+            output.file_fits = self.radmc_to_fits(newname, self.line_list[line], distance)
+        self.outputs[lineobj] = output
 
-    def radmc_to_fits(self, name: PathLike, line: Line, distance: float) -> None:
-        """Saves RadMC3D `image.out` file as FITS file"""
+    def radmc_to_fits(self, name: PathLike, line: Line, distance: float) -> PathLike:
+        """Saves RadMC3D `image.out` file as FITS file
+
+        Returns:
+            name of a newly created fits file
+        """
         im = radmc3dPy.image.readImage(fname=name)
         fitsname = name.replace(".out", ".fits")
         restfreq = line.frequency.to(u.Hz).value
@@ -288,9 +277,11 @@ class RadMCRT(MapBase):
             os.remove(fitsname)
         im.writeFits(fname=fitsname, nu0=restfreq, dpc=distance,
                      fitsheadkeys={"CUNIT3": "Hz", "BUNIT": "Jy pix**(-1)", "RESTFREQ": restfreq})
+        self.fitsfiles.append(fitsname)
         self.logger.info("Saved as %s and %s", name, fitsname)
         self.logger.debug("Modified FITS header unit: HZ to Hz, JY/PX to Jy pix**(-1), set RESTFREQ %s Hz",
                           restfreq)
+        return fitsname
 
     def catch_radmc_messages(self, proc: subprocess.CompletedProcess) -> None:
         """Raises RadMC warnings and errors in `self.logger`"""
@@ -298,6 +289,21 @@ class RadMCRT(MapBase):
         self.logger.debug(proc.stdout)
         for match in re.finditer(r"WARNING:(.*\n(?:  .*\n){2,})", proc.stdout):
             self.logger.warn(match.group(1))
+
+    def copy_for_propype(self, folder: PathLike = None) -> None:
+        """Creates a copy of `self.fitsfiles` in a format which is ready to run them through PRODIGE pipeline"""
+        if folder is None:
+            folder = os.path.join(self.folder, "propype")
+        try:
+            os.mkdir(folder)
+        except FileExistsError as e:
+            self.logger.debug("%s", e)
+        for line, output in self.outputs.items():
+            molecule = line.molecule
+            fitsfile = output.file_fits
+            transition = output.line.transition
+
+            shutil.copy(fitsfile, os.path.join(folder, f"m-Line-00-{molecule}_{transition}+D.fits"))
 
 
 @dataclass
@@ -394,9 +400,12 @@ class RadMCRTSingleCall(RadMCRT):
             print(len(wavelengths), file=file)
             print('\n'.join(f"{entry:.10e}" for entry in wavelengths), file=file)
 
-    def create_files(self) -> None:
+    def create_files(self,
+                     window_width: u.km / u.s = 6 * u.km / u.s,
+                     channels_per_line: int = 200
+                     ) -> None:
         super().create_files()
-        self.camera_wavelength_micron()
+        self.camera_wavelength_micron(window_width=window_width, channels_per_line=channels_per_line)
 
     @u.quantity_input
     def run(
@@ -426,7 +435,8 @@ class RadMCRTSingleCall(RadMCRT):
         names = [os.path.join(self.folder, f"{line.name}_image.out") for line in self.ordered_line_list]
         self.split(names=names)
         for line, name in zip(self.ordered_line_list, names):
-            self.radmc_to_fits(name, line, distance.to(u.pc).value)
+            self.outputs[line] = RadMCOutput(line, file_radmc=name)
+            self.outputs[line].file_fits = self.radmc_to_fits(name, line, distance.to(u.pc).value)
 
     def split(
             self, filename=None,
@@ -441,6 +451,7 @@ class RadMCRTSingleCall(RadMCRT):
             files = [open(name, 'w') for name in names]
             header = [next(bigfile) for _ in range(4)]
             px_number = [int(entry) for entry in header[1].split()]
+            self.logger.info("Splitting %s in %s", filename, names)
             for file, length in zip(files, lengths):
                 file.write(header[0])
                 file.write(header[1])

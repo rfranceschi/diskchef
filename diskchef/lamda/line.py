@@ -12,6 +12,8 @@ class Line:
     """
     A class that reads and stores the information of the emission line
 
+    `Line` instances is hashable, `name` is the key used to hash
+
     Usage:
     >>> line = Line(name="HCO+ J=2-1", transition=1, molecule="HCO+")
     >>> line.parse_lamda()
@@ -76,3 +78,6 @@ class Line:
     @property
     def frequency(self):
         return self.transitions.loc[self.transition]["Frequency"]
+
+    def __hash__(self):
+        return hash(self.name)

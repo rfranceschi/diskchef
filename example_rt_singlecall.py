@@ -25,16 +25,17 @@ chem.table['C18O'] = chem.table['CO'] / 550
 
 map = RadMCRTSingleCall(chemistry=chem, line_list=[
     Line(name='CO J=2-1', transition=1, molecule='CO'),
-    # Line(name='CO J=3-2', transition=2, molecule='CO'),
-    # Line(name='13CO J=3-2', transition=2, molecule='13CO'),
-    # Line(name='C18O J=3-2', transition=2, molecule='C18O'),
+    Line(name='CO J=3-2', transition=2, molecule='CO'),
+    Line(name='13CO J=3-2', transition=2, molecule='13CO'),
+    Line(name='C18O J=3-2', transition=2, molecule='C18O'),
 
 ])
-map.create_files()
+map.create_files(channels_per_line=200)
 map.run(
     inclination=35.18 * u.deg, position_angle=79.19 * u.deg,
     velocity_offset=6 * u.km / u.s, threads=8, distance=128 * u.pc,
 )
+map.copy_for_propype()
 
 # physics.plot_density()
 # chem.plot_chemistry()
