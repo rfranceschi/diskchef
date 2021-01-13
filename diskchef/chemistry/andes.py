@@ -1,32 +1,19 @@
 from dataclasses import dataclass
-from functools import cached_property
-import warnings
-import logging
 import os
 
-import scipy.integrate
+import astropy.io.ascii
 from astropy import units as u
-import astropy.io
 from astropy.visualization import quantity_support
 
-quantity_support()
-import matplotlib.axes
-from matplotlib import pyplot as plt
-from matplotlib.colors import LogNorm
-from matplotlib.cm import get_cmap
-import numpy as np
+import diskchef.physics.base
 
-from divan import Divan
+quantity_support()
 
 from diskchef import CTable
-from diskchef.engine.exceptions import CHEFNotImplementedError, CHEFSlowDownWarning
 
 from diskchef.chemistry.base import ChemistryBase
 from diskchef.engine.other import PathLike
 
-@dataclass
-class DummyPhysics:
-    star_mass: u.solMass = 1 * u.solMass
 
 @dataclass
 class ReadAndesData(ChemistryBase):
@@ -35,10 +22,12 @@ class ReadAndesData(ChemistryBase):
     """
     folder: PathLike = None
     index: int = 0
+
     @property
-    def table(self)->CTable:
+    def table(self) -> CTable:
         return self._table
-    def read(self,index:int=None)->CTable:
+
+    def read(self, index: int = None) -> CTable:
         """Return the associated diskchef.CTable with r, z, and dust and gas properties"""
         if index is None:
             index = self.index
@@ -55,25 +44,24 @@ class ReadAndesData(ChemistryBase):
             names=["Radius", "Height"]
         )
         table["Height to radius"] = chemistry["Relative Height"]
-        table["Gas density"] = physics["Gas density"] << (u.g/u.cm**3)
-        table["Dust density"] = physics["Dust density"] << (u.g/u.cm**3)
+        table["Gas density"] = physics["Gas density"] << (u.g / u.cm ** 3)
+        table["Dust density"] = physics["Dust density"] << (u.g / u.cm ** 3)
         table["Gas temperature"] = physics["Gas temperature"] << (u.K)
         table["Dust temperature"] = physics["Dust temperature"] << (u.K)
-        table["n(H+2H2)"] = (chemistry["H+"]+chemistry["H"]+2*chemistry["H2"]) << (u.cm**(-3))
+        table["n(H+2H2)"] = (chemistry["H+"] + chemistry["H"] + 2 * chemistry["H2"]) << (u.cm ** (-3))
         for species in chemistry.colnames[3:]:
-            table[species] = (chemistry[species] << (u.cm**(-3)) ) /table["n(H+2H2)"]
+            table[species] = (chemistry[species] << (u.cm ** (-3))) / table["n(H+2H2)"]
 
-        self.physics = DummyPhysics(star_mass = config["stellar mass [MSun]"] * u.solMass)
+        self.physics = diskchef.physics.base.PhysicsBase(
+            star_mass=config["stellar mass [MSun]"] * u.solMass,
+        )
+        self.physics.table = physics
 
         return table
 
-
     def __post_init__(self):
-        self.logger = logging.getLogger(__name__ + '.' + self.__class__.__qualname__)
-        self.logger.info("Creating an instance of %s", self.__class__.__qualname__)
-        self.logger.debug("With parameters: %s", self.__dict__)
+        super().__post_init__()
         self._table = self.read()
-
 
     def _config_read(self, path: PathLike) -> dict:
         out = {}

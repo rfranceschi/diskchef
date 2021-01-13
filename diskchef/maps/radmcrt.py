@@ -1,31 +1,29 @@
 import glob
-import typing
+from dataclasses import dataclass
 
 import os
-import shutil
-from dataclasses import dataclass
-import subprocess
 import re
+import shutil
+import subprocess
 import time
-from datetime import timedelta
+import typing
 
-import diskchef.physics
-from diskchef.engine.other import PathLike
 import numpy as np
-
-from astropy import units as u
 from astropy import constants as c
-
+from astropy import units as u
+from datetime import timedelta
 from matplotlib import pyplot as plt
 from matplotlib.colors import Normalize
 
 import radmc3dPy
 
-from diskchef.maps.base import MapBase
-from diskchef.lamda.line import Line
-from diskchef.engine.exceptions import CHEFNotImplementedError
+import diskchef.physics
 from diskchef.engine.ctable import CTable
+from diskchef.engine.exceptions import CHEFNotImplementedError
+from diskchef.engine.other import PathLike
 from diskchef.lamda import file
+from diskchef.lamda.line import Line
+from diskchef.maps.base import MapBase
 
 
 @dataclass
@@ -57,6 +55,7 @@ class RadMCRT(MapBase):
         except FileExistsError:
             self.logger.warn("Directory %s already exists! The results can be biased.", self.folder)
 
+        # TODO grid which is independent from the original grid
         radii = np.sort(np.unique(self.table.r)).to(u.cm)
         zr = np.sort(np.unique(self.table.zr))
         theta = np.pi / 2 - np.arctan(zr)
@@ -214,7 +213,7 @@ class RadMCRT(MapBase):
             self,
             inclination: u.deg = 0 * u.deg, position_angle: u.deg = 0 * u.deg,
             distance: u.pc = 140 * u.pc, velocity_offset: u.km / u.s = 0 * u.km / u.s,
-            threads: int = 1,
+            threads: int = 1, npix: int = 100,
     ) -> None:
         """Run RadMC3D after files were created with `create_files()`"""
         self.logger.info("Running radmc3d")
@@ -227,13 +226,14 @@ class RadMCRT(MapBase):
                 name=f"{line.name}_image.out",
                 distance=distance.to(u.pc).value,
                 threads=threads,
-                lineobj=line
+                lineobj=line,
+                npix=npix,
             )
 
     def _run_single(
             self, molecule: int, line: int, inclination: float = 0, position_angle: float = 0,
             name: PathLike = None, distance: float = 140, velocity_offset: float = 0,
-            n_channels: int = 100, threads: int = 1, lineobj: Line = None
+            n_channels: int = 100, threads: int = 1, lineobj: Line = None, npix: int = 100
     ) -> None:
         start = time.time()
         command = (f"{self.executable} image "
@@ -245,6 +245,7 @@ class RadMCRT(MapBase):
                    f"vkms {velocity_offset} "
                    f"linenlam {n_channels} "
                    f"setthreads {threads} "
+                   f"npix {npix} "
                    )
         self.logger.info("Running radmc3d for molecule %d and transition %d: %s", molecule, line, command)
         proc = subprocess.run(
@@ -412,7 +413,7 @@ class RadMCRTSingleCall(RadMCRT):
             self,
             inclination: u.deg = 0 * u.deg, position_angle: u.deg = 0 * u.deg,
             distance: u.pc = 140 * u.pc, velocity_offset: u.km / u.s = 0 * u.km / u.s,
-            threads: int = 1
+            threads: int = 1, npix:int = 100
     ) -> None:
         self.logger.info("Running radmc3d")
         start = time.time()
@@ -421,6 +422,7 @@ class RadMCRTSingleCall(RadMCRT):
                    f"posang {position_angle.to(u.deg).value} "
                    f"setthreads {threads} "
                    "loadlambda "
+                   f"npix {npix} "
                    )
         self.logger.info("Running radmc3d for all transition at once: %s", command)
         proc = subprocess.run(

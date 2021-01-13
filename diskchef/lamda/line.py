@@ -28,11 +28,11 @@ class Line:
     2.000000e+00 2.975000e+00 3.000000e+00 1.000000e+00
     3.000000e+00 8.925000e+00 5.000000e+00 2.000000e+00
 
-    >>> line.transitions.loc[1]  # doctest: +NORMALIZE_WHITESPACE
+    >>> line.transitions.loc[1]  # doctest: +NORMALIZE_WHITESPACE +ELLIPSIS
     <Row index=0>
     Transition   Up   Low  Einstein A Frequency Energy upper
                              1 / s       GHz         K
-      int64    int64 int64  float64    float64    float64
+      int...  int... int... float...   float...   float...
     ---------- ----- ----- ---------- --------- ------------
              1     2     1 4.2512e-05 89.188523         4.28
     """
@@ -40,6 +40,9 @@ class Line:
     transition: int
     molecule: str
     collision_partner: tuple = ('H2',)
+
+    def __post_init__(self):
+        self.parse_lamda()
 
     def parse_lamda(self, lamda_file: PathLike = None):
         """Parses LAMDA database file to identify collision partner and frequency"""
@@ -66,7 +69,8 @@ class Line:
             lamda.readline()
             transitions = [next(lamda) for i in range(self.number_transitions)]
             self.transitions = CTable.read(
-                transitions, format='ascii', names=["Transition", "Up", "Low", "Einstein A", "Frequency", "Energy upper"],
+                transitions, format='ascii',
+                names=["Transition", "Up", "Low", "Einstein A", "Frequency", "Energy upper"],
             )
             self.transitions["Einstein A"].unit = 1. / u.s
             self.transitions["Frequency"].unit = u.GHz

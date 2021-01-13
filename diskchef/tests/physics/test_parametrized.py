@@ -1,10 +1,9 @@
-import sys
+import numpy as np
 import pytest
 from astropy import units as u
-from astropy.table import setdiff
-import numpy as np
-from matplotlib import pyplot as plt
 from astropy.io.ascii import read
+from astropy.table import setdiff
+
 from diskchef.physics.parametrized import powerlawpiece, PieceWisePowerLaw, PowerLawPhysics
 
 

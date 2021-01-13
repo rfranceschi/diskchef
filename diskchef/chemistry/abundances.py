@@ -1,5 +1,6 @@
-from typing import List
 from collections import UserDict
+
+from typing import List
 
 
 class Abundances(UserDict):

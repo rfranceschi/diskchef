@@ -1,7 +1,5 @@
-from collections import namedtuple
-from typing import List, NamedTuple, Union
-from functools import cached_property
 from dataclasses import dataclass
+from functools import cached_property
 
 import numpy as np
 import scipy.integrate

@@ -1,20 +1,16 @@
 from dataclasses import dataclass
-from typing import List
+
 import logging
+from typing import List
 
-from astropy import units as u
-
-from diskchef.chemistry.base import ChemistryBase
-from diskchef.engine.other import PathLike
-from diskchef.engine.ctable import CTable
-import diskchef.lamda
+from diskchef.chemistry.base import ChemistryModel
 from diskchef.lamda.line import Line
 
 
 @dataclass
 class MapBase:
     """The base class for map generation"""
-    chemistry: ChemistryBase = None
+    chemistry: ChemistryModel = None
     line_list: List[Line] = None
 
     def __post_init__(self):

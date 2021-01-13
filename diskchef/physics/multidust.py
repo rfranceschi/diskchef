@@ -1,10 +1,9 @@
 """Module with a definition of multiple dust populations"""
 from dataclasses import dataclass
 from typing import Literal
-from functools import cached_property
 
-from astropy import units as u
 import numpy as np
+from astropy import units as u
 
 from diskchef.engine.ctable import CTable
 from diskchef.engine.exceptions import CHEFRuntimeError

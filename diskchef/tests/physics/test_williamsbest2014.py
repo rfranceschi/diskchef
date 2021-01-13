@@ -1,6 +1,6 @@
-import sys
 from astropy.io.ascii import read
 from astropy.table import setdiff
+
 from diskchef.physics.williams_best import WilliamsBest2014
 
 

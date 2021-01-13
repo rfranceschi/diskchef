@@ -1,22 +1,34 @@
-import os
 import math
+import os
+import sys
 from warnings import warn
 
 import numpy as np
-from astropy import units as u
 import astropy.wcs
+from astropy import units as u
 import spectral_cube
 
-import galario
+try:
+    import galario
 
-if galario.HAVE_CUDA:
-    from galario import double_cuda as g_double
-    from galario import single_cuda as g_single
-else:
-    from galario import double as g_double
-    from galario import single as g_single
+    if galario.HAVE_CUDA:
+        from galario import double_cuda as g_double
+        from galario import single_cuda as g_single
+    else:
+        from galario import double as g_double
+        from galario import single as g_single
 
-import radmc3dPy
+except ModuleNotFoundError:
+    print("Install galario:")
+    print("$ conda install -c conda-forge galario")
+    print("Works only on linux and osx 64 bit (not Windows)")
+
+try:
+    import radmc3dPy
+    from radmc3dPy.image import radmc3dImage
+except ImportError:
+    print("radmc3dPy is not installed properly. Does not work on Windows")
+    radmc3dImage = None
 
 from diskchef.uv.uvfits_to_visibilities_ascii import UVFits
 from diskchef.engine.exceptions import CHEFValueWarning
@@ -30,6 +42,9 @@ class Residual:
         There is no check whether wavelength axes of data and model match
 
     Usage:
+    >>> import pytest
+    >>> if sys.platform.startswith("win"):
+    ...     pytest.skip("Does not work on Windows")
 
     >>> data = UVFits(os.path.join(os.path.dirname(__file__), "..", "tests", "data", "s-Wide-1+C.uvfits"), 'all', sum=True)
     >>> model = radmc3dPy.image.readImage(
@@ -52,7 +67,7 @@ class Residual:
 
     def __init__(
             self,
-            model: radmc3dPy.image.radmc3dImage,
+            model: radmc3dImage,
             data: UVFits,
             distance: u.pc,
     ):
@@ -118,7 +133,7 @@ class Residual:
         wcs = astropy.wcs.WCS(wcs_dict)
 
         cube = spectral_cube.SpectralCube(
-            data=model_array << u.Jy/u.pix,
+            data=model_array << u.Jy / u.pix,
             wcs=wcs
         )
         cube_interpolated = cube.with_mask(cube != np.nan * u.Jy / u.pix).spectral_interpolate(data_frequencies)

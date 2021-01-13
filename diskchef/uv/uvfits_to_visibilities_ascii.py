@@ -1,19 +1,15 @@
 """Module with functions to convert GILDAS UVTable to GALARIO visibilities format"""
-from typing import Union, Literal, List, Sequence
-import os
-
 import numpy as np
+import os
+from typing import Union, Literal, Sequence
 
-from astropy.table import Table, QTable
-from astropy import units as u
 from astropy import constants as c
-
-from matplotlib import pyplot as plt
-
+from astropy import units as u
+from astropy.table import Table, QTable
 import uvplot
 
-from diskchef.engine.other import PathLike
 from diskchef.engine.exceptions import CHEFTypeError
+from diskchef.engine.other import PathLike
 
 
 class UVFits:

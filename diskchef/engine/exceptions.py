@@ -7,11 +7,14 @@ class CHEFNotImplementedError(CHEFError, NotImplementedError):
     """Exception raised by base classes methods which only define interface for child classes"""
     pass
 
+
 class CHEFValueError(CHEFError, ValueError):
     """Exception raised when the value of argument to the function is wrong"""
 
+
 class CHEFTypeError(CHEFError, TypeError):
     """Exception raised when the type of argument is wrong"""
+
 
 class CHEFRuntimeError(CHEFError, RuntimeError):
     """Exception raised in other cases"""
@@ -21,9 +24,11 @@ class CHEFWarning(UserWarning):
     """Base class for diskchef warningns"""
     pass
 
+
 class RADMCWarning(CHEFWarning):
     """Base class for radmc warningns"""
     pass
+
 
 class CHEFValueWarning(CHEFWarning):
     """Warning issued when the values are not properly set, but it is not critical"""
