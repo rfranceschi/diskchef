@@ -2,7 +2,7 @@ from setuptools import setup, find_namespace_packages
 
 setup(
     name='diskchef',
-    version='v0.1',
+    version='v0.2',
     packages=find_namespace_packages(include=["diskchef*"], exclude=["diskchef.tests*"]),
     package_data={'diskchef.lamda': ['*.dat']},
     url='https://gitlab.com/SmirnGreg/diskchef',
