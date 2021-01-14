@@ -1,15 +1,15 @@
 from collections import namedtuple
-from typing import List, NamedTuple, Union
 from dataclasses import dataclass
+from typing import List, Union
 
 import numpy as np
 from astropy import units as u
 
-from diskchef.physics.base import PhysicsBase
+from diskchef.physics.base import PhysicsModel
 
 
 @dataclass
-class ParametrizedPhysics(PhysicsBase):
+class ParametrizedPhysics(PhysicsModel):
     """Base class for all parameter-based physics"""
     pass
 

@@ -1,7 +1,8 @@
 import pytest
 from astropy import units as u
-from diskchef.physics.base import PhysicsBase
+
 from diskchef.engine.exceptions import CHEFNotImplementedError
+from diskchef.physics.base import PhysicsModel
 
 
 @pytest.mark.parametrize(
@@ -21,5 +22,5 @@ from diskchef.engine.exceptions import CHEFNotImplementedError
     ]
 )
 def test_raises(input, method, error):
-    phys = PhysicsBase()
+    phys = PhysicsModel()
     pytest.raises(error, getattr(phys, method), *input)

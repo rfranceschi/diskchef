@@ -1,5 +1,6 @@
 """Functions to get the file from LAMDA database"""
 from glob import glob
+
 import os
 import re
 from typing import List
@@ -24,7 +25,9 @@ def file(species: str) -> List[str]:
     True
     >>> os.path.basename(out[0])
     'co.dat'
+    >>> os.path.basename(file('HCO+')[0])
+    'hco+@xpol.dat'
     """
-    regexp = re.compile(fr"\{os.path.sep}{species.lower()}(?:@\w*)?[^a-z1-9+\{os.path.sep}]*\.dat$")
+    regexp = re.compile(fr"\{os.path.sep}{re.escape(species.lower())}(?:@\w*)?[^a-z1-9+\{os.path.sep}]*\.dat$")
     matching_files = [file for file in LAMDA_FILES if re.search(regexp, file)]
     return matching_files

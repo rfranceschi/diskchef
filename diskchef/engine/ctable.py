@@ -1,16 +1,14 @@
 """Class CTable(astropy.table.QTable) with additional features for CheF"""
-import sys
-from typing import Callable
-from functools import cached_property
 import io
 from contextlib import redirect_stdout
+from functools import cached_property
+from typing import Callable
 
 import numpy as np
-from astropy.table import QTable
 from astropy import units as u
-from astropy.io.ascii import write
-from named_constants import Constants
+from astropy.table import QTable
 from scipy.interpolate import griddata
+from named_constants import Constants
 
 from diskchef.engine.exceptions import CHEFNotImplementedError, CHEFRuntimeError
 
@@ -112,13 +110,16 @@ class CTable(QTable):
         Returns: callable(r, z) with interpolated value of column
         """
 
+        # TODO non-linear interpolation
         def _interpolation(r: u.au, z: u.au):
             interpolated = griddata(
                 points=(self.r, self.z),
                 values=self[column],
                 xi=(r.to(u.au).value, z.to(u.au).value),
                 fill_value=0
-            ) << self[column].unit
+            )
+            if self[column].unit:
+                interpolated = interpolated << self[column].unit
             return interpolated
 
         return _interpolation

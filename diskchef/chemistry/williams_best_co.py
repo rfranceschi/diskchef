@@ -2,12 +2,12 @@ from dataclasses import dataclass
 
 from astropy import units as u
 
-from diskchef.chemistry.base import ChemistryBase
+from diskchef.chemistry.base import ChemistryModel
 from diskchef.physics.williams_best import WilliamsBest2014
 
 
 @dataclass
-class ChemistryWB2014(ChemistryBase):
+class ChemistryWB2014(ChemistryModel):
     """Calculates chemistry according to Williams & Best 2014
 
     Eq. 5-7

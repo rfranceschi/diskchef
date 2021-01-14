@@ -1,19 +1,48 @@
-from functools import cached_property
 from dataclasses import dataclass
 import logging
 
-from matplotlib import colors
 from astropy import units as u, constants as const
-
+from matplotlib import colors
 from divan import Divan
 
+from diskchef.chemistry.abundances import Abundances
 from diskchef.physics.base import PhysicsBase
 from diskchef.physics.williams_best import WilliamsBest2014
-from diskchef.chemistry.abundances import Abundances
 
 
 @dataclass
 class ChemistryBase:
+    physics: PhysicsBase = None
+
+    def __post_init__(self):
+        self.logger = logging.getLogger(__name__ + '.' + self.__class__.__qualname__)
+        self.logger.info("Creating an instance of %s", self.__class__.__qualname__)
+        self.logger.debug("With parameters: %s", self.__dict__)
+
+    @property
+    def table(self):
+        """Shortcut for self.physics.table"""
+        return self.physics.table
+
+    def plot_chemistry(self, table=None):
+        if table is None:
+            table = self.table
+        dvn = Divan()
+        dvn.chemical_structure = table
+        dvn.generate_figure_chemistry(spec1="CO", spec2="CO", normalizer=colors.LogNorm())
+
+    def plot_h2_coldens(self):
+        dvn = Divan()
+        dvn.chemical_structure = self.table
+        dvn.generate_figure(
+            r=self.table.r, z=self.table.z,
+            data1=self.table["H2 column density towards star"],
+            normalizer=colors.LogNorm(1e10, 1e30)
+        )
+
+
+@dataclass
+class ChemistryModel(ChemistryBase):
     """
     Base class for chemistry with fixed abundances
 
@@ -27,7 +56,7 @@ class ChemistryBase:
     >>> # Define physics first
     >>> physics = WilliamsBest2014(radial_bins=3, vertical_bins=3)
     >>> # Define chemistry class using the physics instance
-    >>> chemistry = ChemistryBase(physics)
+    >>> chemistry = ChemistryModel(physics)
     >>> # chemistry.table is pointing to the physics.table
     >>> chemistry.table  # doctest: +NORMALIZE_WHITESPACE
        Radius       Height    Height to radius Gas density  Dust density Gas temperature Dust temperature   n(H+2H2)
@@ -61,20 +90,15 @@ class ChemistryBase:
     5.000000e+02 3.500000e+02     7.000000e-01 8.170464e-20 8.170464e-22    3.277680e+01     3.277680e+01 2.111746e+04 5.000000e-01 5.000000e-05
 
     """
-    physics: PhysicsBase = None
     initial_abundances: Abundances = Abundances()
     mean_molecular_mass: u.g / u.mol = 2.33 * u.g / u.mol
 
-    @property
-    def table(self):
-        """Shortcut for self.physics.table"""
-        return self.physics.table
-
     def __post_init__(self):
-        self.update_hydrogen_atom_number_density()
-        self.logger = logging.getLogger(__name__ + '.' + self.__class__.__qualname__)
-        self.logger.info("Creating an instance of %s", self.__class__.__qualname__)
-        self.logger.debug("With parameters: %s", self.__dict__)
+        super().__post_init__()
+        try:
+            self.update_hydrogen_atom_number_density()
+        except KeyError as e:
+            self.logger.warning("'Gas density' is not defined in physics.table of %s: %s", self.physics, e)
 
     def update_hydrogen_atom_number_density(self):
         """Calculates the hydrogen atom density used to scale all other atoms to"""
@@ -87,19 +111,3 @@ class ChemistryBase:
         """
         for species, abundance in self.initial_abundances.items():
             self.table[species] = abundance
-
-    def plot_chemistry(self, table=None):
-        if table is None:
-            table = self.table
-        dvn = Divan()
-        dvn.chemical_structure = table
-        dvn.generate_figure_chemistry(spec1="CO", spec2="CO", normalizer=colors.LogNorm())
-
-    def plot_h2_coldens(self):
-        dvn = Divan()
-        dvn.chemical_structure = self.table
-        dvn.generate_figure(
-            r=self.table.r, z=self.table.z,
-            data1=self.table["H2 column density towards star"],
-            normalizer=colors.LogNorm(1e10, 1e30)
-        )

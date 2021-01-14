@@ -1,6 +1,7 @@
-from astropy import units as u
-import pytest
 import numpy as np
+import pytest
+from astropy import units as u
+
 from diskchef import CTable
 
 

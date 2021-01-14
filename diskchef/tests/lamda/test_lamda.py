@@ -1,6 +1,6 @@
-import os
 from glob import glob
 
+import os
 import pytest
 
 import diskchef.lamda
