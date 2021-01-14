@@ -18,10 +18,10 @@ physics = WilliamsBest2014(radial_bins=bins, vertical_bins=bins)
 chem = NonzeroChemistryWB2014(physics)
 chem.run_chemistry()
 
-# physics.plot_density()
-# chem.plot_chemistry()
-# chem.plot_h2_coldens()
-#
-# # chem.table.write_e()
-#
-# plt.show()
+physics.plot_density()
+chem.plot_chemistry()
+chem.plot_h2_coldens()
+
+# chem.table.write_e()
+
+plt.show()

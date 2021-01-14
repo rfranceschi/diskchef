@@ -1,4 +1,5 @@
 import os
+
 from diskchef.chemistry.abundances import Abundances
 
 data_path = os.path.join(os.path.dirname(__file__), "../data")

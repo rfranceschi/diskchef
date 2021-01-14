@@ -1,18 +1,16 @@
 """Class CTable(astropy.table.QTable) with additional features for CheF"""
-import sys
-from typing import Callable
-from functools import cached_property
 import io
 from contextlib import redirect_stdout
+from functools import cached_property
+from typing import Callable
 
 import numpy as np
-from astropy.table import QTable
 from astropy import units as u
-from astropy.io.ascii import write
-from named_constants import Constants
+from astropy.table import QTable
 from scipy.interpolate import griddata
+from named_constants import Constants
 
-from diskchef.engine.exceptions import CHEFNotImplementedError
+from diskchef.engine.exceptions import CHEFNotImplementedError, CHEFRuntimeError
 
 
 class TableColumns(Constants):
@@ -37,9 +35,9 @@ class CTable(QTable):
     Usage:
 
     >>> tbl = CTable()
-    >>> tbl['Radius'] = [1, 2] * u.m; tbl['b'] = [3e-4, 4e3]
+    >>> tbl['Radius'] = [1, 2] * u.m; tbl['Data'] = [3e-4, 4e3]
     >>> tbl # doctest: +NORMALIZE_WHITESPACE
-       Radius         b
+       Radius        Data
           m
     ------------ ------------
     1.000000e+00 3.000000e-04
@@ -49,8 +47,8 @@ class CTable(QTable):
     <Quantity [1., 2.] m>
 
     >>> # .name attribute is properly set for the returned Quantity
-    >>> tbl['b'].name
-    'b'
+    >>> tbl['Data'].name
+    'Data'
     >>> tbl.r.name
     'Radius'
 
@@ -112,13 +110,16 @@ class CTable(QTable):
         Returns: callable(r, z) with interpolated value of column
         """
 
+        # TODO non-linear interpolation
         def _interpolation(r: u.au, z: u.au):
             interpolated = griddata(
                 points=(self.r, self.z),
                 values=self[column],
                 xi=(r.to(u.au).value, z.to(u.au).value),
                 fill_value=0
-            ) << self[column].unit
+            )
+            if self[column].unit:
+                interpolated = interpolated << self[column].unit
             return interpolated
 
         return _interpolation
@@ -147,3 +148,28 @@ class CTable(QTable):
             self.pprint_all()
             output = buf.getvalue()
         return output
+
+    def __str__(self):
+        return self.__repr__()
+
+    @property
+    def _dust_pop_sum(self):
+        return sum([self[f"{dust.name} mass fraction"] for dust in self.meta["Dust list"]])
+
+    @property
+    def dust_population_fully_set(self, atol=1e-5):
+        """
+        Check whether sum of mass fractions of dust populations is equal to 1
+        """
+        return np.all(abs(1 - self._dust_pop_sum) < atol)
+
+    def normalize_dust(self):
+        """
+        Normalize the dust fractions so that the sum is 1
+        """
+        pop_sum = self._dust_pop_sum
+        for dust in self.meta["Dust list"]:
+            dust.mass_fraction /= pop_sum
+            dust.write_to_table()
+        if not self.dust_population_fully_set:
+            raise CHEFRuntimeError

@@ -1,17 +1,13 @@
 from dataclasses import dataclass
 from functools import cached_property
-import warnings
 import logging
+import warnings
 
 import scipy.integrate
 from astropy import units as u
 from astropy.visualization import quantity_support
 
-quantity_support()
 import matplotlib.axes
-from matplotlib import pyplot as plt
-from matplotlib.colors import LogNorm
-from matplotlib.cm import get_cmap
 import numpy as np
 
 from divan import Divan
@@ -19,26 +15,40 @@ from divan import Divan
 from diskchef import CTable
 from diskchef.engine.exceptions import CHEFNotImplementedError, CHEFSlowDownWarning
 
+quantity_support()
+
 
 @dataclass
 class PhysicsBase:
+    star_mass: u.solMass = 1 * u.solMass
+
+    def __post_init__(self):
+        self.logger = logging.getLogger(__name__ + '.' + self.__class__.__qualname__)
+        self.logger.info("Creating an instance of %s", self.__class__.__qualname__)
+        self.logger.debug("With parameters: %s", self.__dict__)
+
+    @property
+    def table(self) -> CTable:
+        return self._table
+
+    @table.setter
+    def table(self, value: CTable):
+        self._table = value
+
+
+@dataclass
+class PhysicsModel(PhysicsBase):
     """
     The base class describing the most basic parameters of the disk
 
     Can not be used directly, rather subclasses should be used. See `WilliamsBest2014` documentation for more details
     """
-    star_mass: u.solMass = 1 * u.solMass
     r_min: u.au = 0.1 * u.au
     r_max: u.au = 500 * u.au
     zr_max: float = 0.7
     radial_bins: int = 100
     vertical_bins: int = 100
     dust_to_gas: float = 0.01
-
-    def __post_init__(self):
-        self.logger = logging.getLogger(__name__ + '.' + self.__class__.__qualname__)
-        self.logger.info("Creating an instance of %s", self.__class__.__qualname__)
-        self.logger.debug("With parameters: %s", self.__dict__)
 
     @u.quantity_input
     def gas_density(self, r: u.au, z: u.au) -> u.g / u.cm ** 3:
