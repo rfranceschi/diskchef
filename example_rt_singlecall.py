@@ -1,13 +1,10 @@
-import pytest
-from astropy import units as u
-import numpy as np
-from matplotlib import pyplot as plt
 import logging
+from astropy import units as u
 
-from diskchef.physics.williams_best import WilliamsBest2014
 from diskchef.chemistry.williams_best_co import NonzeroChemistryWB2014
-from diskchef.maps.radmcrt import RadMCRTSingleCall
 from diskchef.lamda.line import Line
+from diskchef.maps.radmcrt import RadMCRTSingleCall
+from diskchef.physics.williams_best import WilliamsBest2014
 
 logging.basicConfig(
     level=logging.DEBUG,
@@ -23,13 +20,14 @@ chem.run_chemistry()
 chem.table['13CO'] = chem.table['CO'] / 70
 chem.table['C18O'] = chem.table['CO'] / 550
 
-map = RadMCRTSingleCall(chemistry=chem, line_list=[
-    Line(name='CO J=2-1', transition=1, molecule='CO'),
-    Line(name='CO J=3-2', transition=2, molecule='CO'),
-    Line(name='13CO J=3-2', transition=2, molecule='13CO'),
-    Line(name='C18O J=3-2', transition=2, molecule='C18O'),
-
-])
+map = RadMCRTSingleCall(
+    chemistry=chem, line_list=[
+        Line(name='CO J=2-1', transition=1, molecule='CO'),
+        Line(name='CO J=3-2', transition=2, molecule='CO'),
+        Line(name='13CO J=3-2', transition=2, molecule='13CO'),
+        Line(name='C18O J=3-2', transition=2, molecule='C18O'), ],
+    radii_bins=200, theta_bins=200
+)
 map.create_files(channels_per_line=200)
 map.run(
     inclination=35.18 * u.deg, position_angle=79.19 * u.deg,

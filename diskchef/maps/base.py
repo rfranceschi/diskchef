@@ -3,14 +3,14 @@ from dataclasses import dataclass
 import logging
 from typing import List
 
-from diskchef.chemistry.base import ChemistryModel
+from diskchef.chemistry.base import ChemistryBase
 from diskchef.lamda.line import Line
 
 
 @dataclass
 class MapBase:
     """The base class for map generation"""
-    chemistry: ChemistryModel = None
+    chemistry: ChemistryBase = None
     line_list: List[Line] = None
 
     def __post_init__(self):

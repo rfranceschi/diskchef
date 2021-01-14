@@ -1,13 +1,12 @@
 from dataclasses import dataclass
-
+from functools import cached_property
 import logging
-import scipy.integrate
 import warnings
+
+import scipy.integrate
 from astropy import units as u
 from astropy.visualization import quantity_support
-from functools import cached_property
 
-quantity_support()
 import matplotlib.axes
 import numpy as np
 
@@ -15,6 +14,8 @@ from divan import Divan
 
 from diskchef import CTable
 from diskchef.engine.exceptions import CHEFNotImplementedError, CHEFSlowDownWarning
+
+quantity_support()
 
 
 @dataclass
@@ -27,11 +28,11 @@ class PhysicsBase:
         self.logger.debug("With parameters: %s", self.__dict__)
 
     @property
-    def table(self):
+    def table(self) -> CTable:
         return self._table
 
     @table.setter
-    def table(self, value):
+    def table(self, value: CTable):
         self._table = value
 
 

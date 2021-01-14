@@ -34,8 +34,8 @@ class Abundances(UserDict):
         """Process the string containing the 3abunds.inp ALCHEMIC abundances file"""
         species = {}
         for line in lines[2:]:
-            _species, _abundance_to_H = line.split()
-            species[_species] = float(_abundance_to_H.replace("D", "E"))
+            _species, _abundance_to_hydrogen = line.split()
+            species[_species] = float(_abundance_to_hydrogen.replace("D", "E"))
         return cls(species)
 
     def __init__(self, *args, **kwargs):

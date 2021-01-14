@@ -1,25 +1,24 @@
 import glob
 from dataclasses import dataclass
 
+import numpy as np
 import os
+import radmc3dPy
 import re
 import shutil
 import subprocess
 import time
 import typing
-
-import numpy as np
 from astropy import constants as c
 from astropy import units as u
 from datetime import timedelta
 from matplotlib import pyplot as plt
 from matplotlib.colors import Normalize
-
-import radmc3dPy
+from typing import Union
 
 import diskchef.physics
 from diskchef.engine.ctable import CTable
-from diskchef.engine.exceptions import CHEFNotImplementedError
+from diskchef.engine.exceptions import CHEFNotImplementedError, CHEFTypeError
 from diskchef.engine.other import PathLike
 from diskchef.lamda import file
 from diskchef.lamda.line import Line
@@ -44,6 +43,9 @@ class RadMCRT(MapBase):
     executable: PathLike = 'radmc3d'
     verbosity: int = 0
     folder: PathLike = 'radmc'
+    radii_bins: Union[None, int] = None
+    theta_bins: Union[None, int] = None
+    outer_radius: Union[None, u.Quantity] = None
 
     def __post_init__(self):
         super(RadMCRT, self).__post_init__()
@@ -56,8 +58,26 @@ class RadMCRT(MapBase):
             self.logger.warn("Directory %s already exists! The results can be biased.", self.folder)
 
         # TODO grid which is independent from the original grid
-        radii = np.sort(np.unique(self.table.r)).to(u.cm)
-        zr = np.sort(np.unique(self.table.zr))
+        if self.radii_bins is None:
+            radii = np.sort(np.unique(self.table.r)).to(u.cm)
+            if self.outer_radius is not None:
+                radii = radii[radii <= self.outer_radius]
+        elif isinstance(self.radii_bins, int):
+            if self.outer_radius is None:
+                outer_radius = self.table.r.max()
+            else:
+                outer_radius = self.outer_radius
+            radii = np.geomspace(self.table.r.min(), outer_radius, self.radii_bins).to(u.cm)
+        else:
+            raise CHEFTypeError("radii_bins should be None or int, not %s (%s)", type(self.radii_bins), self.radii_bins)
+
+        if self.theta_bins is None:
+            zr = np.sort(np.unique(self.table.zr))
+        elif isinstance(self.theta_bins, int):
+            zr = np.linspace(self.table.zr.min(), self.table.zr.max(), self.theta_bins)
+        else:
+            raise CHEFTypeError("theta_bins should be None or int, not %s (%s)", type(self.theta_bins), self.theta_bins)
+
         theta = np.pi / 2 - np.arctan(zr)
         self.radii_edges = u.Quantity([radii[0], *np.sqrt(radii[1:] * radii[:-1]), radii[-1]]).value
         self.zr_edges = np.array([zr[0], *(0.5 * (zr[1:] + zr[:-1])), zr[-1]])
@@ -413,7 +433,7 @@ class RadMCRTSingleCall(RadMCRT):
             self,
             inclination: u.deg = 0 * u.deg, position_angle: u.deg = 0 * u.deg,
             distance: u.pc = 140 * u.pc, velocity_offset: u.km / u.s = 0 * u.km / u.s,
-            threads: int = 1, npix:int = 100
+            threads: int = 1, npix: int = 100
     ) -> None:
         self.logger.info("Running radmc3d")
         start = time.time()
