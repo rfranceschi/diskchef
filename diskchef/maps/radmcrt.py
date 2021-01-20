@@ -34,21 +34,16 @@ class RadMCOutput:
 
 
 @dataclass
-class RadMCRT(MapBase):
-    """
-    Class with interface to run RadMC3D by Cornelis Dullemond
-
-    By initialization creates the basic table (`self.polar_table`) with the grid in polar RadMC3D coordinates.
-    """
+class RadMCBase(MapBase):
     executable: PathLike = 'radmc3d'
-    verbosity: int = 0
     folder: PathLike = 'radmc'
     radii_bins: Union[None, int] = None
     theta_bins: Union[None, int] = None
     outer_radius: Union[None, u.Quantity] = None
+    verbosity: int = 0
 
     def __post_init__(self):
-        super(RadMCRT, self).__post_init__()
+        super().__post_init__()
         if not self.table.is_in_zr_regular_grid:
             raise CHEFNotImplementedError
 
@@ -101,6 +96,18 @@ class RadMCRT(MapBase):
         """List of created FITS files"""
         self.outputs = {}
 
+    @property
+    def mode(self) -> str:
+        """Mode of RadMC: `mctherm`, `image`, `spectrum`, `sed`"""
+        raise NotImplementedError
+
+    def catch_radmc_messages(self, proc: subprocess.CompletedProcess) -> None:
+        """Raises RadMC warnings and errors in `self.logger`"""
+        if proc.stderr: self.logger.error(proc.stderr)
+        self.logger.debug(proc.stdout)
+        for match in re.finditer(r"WARNING:(.*\n(?:  .*\n){2,})", proc.stdout):
+            self.logger.warn(match.group(1))
+
     def interpolate(self, column: str) -> None:
         """Adds a new `column` to `self.polar_table` with the data iterpolated from `self.table`"""
         self.polar_table[column] = self.table.interpolate(column)(self.polar_table.r, self.polar_table.z)
@@ -110,13 +117,6 @@ class RadMCRT(MapBase):
         self.radmc3d()
         self.wavelength_micron()
         self.amr_grid()
-        self.gas_temperature()
-        self.lines()
-        self.gas_velocity()
-
-        for molecule in self.molecules_list:
-            self.numberdens(species=molecule)
-            self.molecule(species=molecule)
         self.logger.info("Files written to %s", self.folder)
 
     def radmc3d(self, out_file: PathLike = None) -> None:
@@ -158,6 +158,92 @@ class RadMCRT(MapBase):
             print(' '.join(f"{entry:.7e}" for entry in self.radii_edges), file=file)
             print(' '.join(f"{entry:.7e}" for entry in self.theta_edges), file=file)
             print(0, 2 * np.pi, file=file)
+
+    @u.quantity_input
+    def run(
+            self,
+            inclination: u.deg = 0 * u.deg, position_angle: u.deg = 0 * u.deg,
+            distance: u.pc = 140 * u.pc, velocity_offset: u.km / u.s = 0 * u.km / u.s,
+            threads: int = 1, npix: int = 100,
+    ) -> None:
+        """Run RadMC3D after files were created with `create_files()`"""
+        raise CHEFNotImplementedError
+
+
+@dataclass
+class RadMCTherm(RadMCBase):
+    @property
+    def mode(self) -> str:
+        """Mode of RadMC: `mctherm`, `image`, `spectrum`, `sed`"""
+        return "mctherm"
+
+    def dust_density(self, species: str, out_file: PathLike = None) -> None:
+        """Writes the dust density file"""
+
+        if out_file is None:
+            out_file = os.path.join(self.folder, f'numberdens_{species}.inp')
+
+        self.interpolate(species)
+
+        with open(out_file, 'w') as file:
+            print('1', file=file)  # Typically 1 at present
+            print(self.nrcells, file=file)
+            print(len(self.dust_species), file=file)  # Number of species
+            for dust_spice in self.dust_species:
+                print(
+                    '\n'.join(
+                        f"{entry:.7e}" for entry
+                        in self.polar_table[dust_spice.density].to(u.g * u.cm ** (-3)).value),
+                    file=file
+            )
+
+    @u.quantity_input
+    def run(
+            self,
+            inclination: u.deg = 0 * u.deg, position_angle: u.deg = 0 * u.deg,
+            distance: u.pc = 140 * u.pc, velocity_offset: u.km / u.s = 0 * u.km / u.s,
+            threads: int = 1, npix: int = 100,
+    ) -> None:
+        self.logger.info("Running radmc3d")
+        start = time.time()
+        command = (f"{self.executable} {self.mode} "
+                   f"setthreads {threads} "
+                   )
+        self.logger.info("Running radmc3d for dust temperature calculation: %s", command)
+        proc = subprocess.run(
+            command,
+            cwd=self.folder,
+            text=True,
+            capture_output=True,
+            shell=True
+        )
+        self.logger.info("radmc3d finished after %s", timedelta(seconds=time.time() - start))
+        self.catch_radmc_messages(proc)
+
+
+@dataclass
+class RadMCRT(RadMCBase):
+    """
+    Class with interface to run RadMC3D by Cornelis Dullemond
+
+    By initialization creates the basic table (`self.polar_table`) with the grid in polar RadMC3D coordinates.
+    """
+
+    @property
+    def mode(self) -> str:
+        """Mode of RadMC: `mctherm`, `image`, `spectrum`, `sed`"""
+        return 'image'
+
+    def create_files(self) -> None:
+        """Creates all the files necessary to run RadMC3D"""
+        super().create_files()
+        self.lines()
+        self.gas_velocity()
+
+        for molecule in self.molecules_list:
+            self.numberdens(species=molecule)
+            self.molecule(species=molecule)
+        self.logger.info("Line files written to %s", self.folder)
 
     def gas_temperature(self, out_file: PathLike = None) -> None:
         """Writes the gas temperature file"""
@@ -256,7 +342,7 @@ class RadMCRT(MapBase):
             n_channels: int = 100, threads: int = 1, lineobj: Line = None, npix: int = 100
     ) -> None:
         start = time.time()
-        command = (f"{self.executable} image "
+        command = (f"{self.executable} {self.mode} "
                    f"imolspec {molecule} "
                    f"iline {line} "
                    f"widthkms 10 "
@@ -303,13 +389,6 @@ class RadMCRT(MapBase):
         self.logger.debug("Modified FITS header unit: HZ to Hz, JY/PX to Jy pix**(-1), set RESTFREQ %s Hz",
                           restfreq)
         return fitsname
-
-    def catch_radmc_messages(self, proc: subprocess.CompletedProcess) -> None:
-        """Raises RadMC warnings and errors in `self.logger`"""
-        if proc.stderr: self.logger.error(proc.stderr)
-        self.logger.debug(proc.stdout)
-        for match in re.finditer(r"WARNING:(.*\n(?:  .*\n){2,})", proc.stdout):
-            self.logger.warn(match.group(1))
 
     def copy_for_propype(self, folder: PathLike = None) -> None:
         """Creates a copy of `self.fitsfiles` in a format which is ready to run them through PRODIGE pipeline"""
