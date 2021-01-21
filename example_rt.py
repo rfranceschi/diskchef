@@ -32,7 +32,7 @@ map = RadMCRT(chemistry=chem, line_list=[
 map.create_files()
 map.run(
     inclination=35.18 * u.deg, position_angle=79.19 * u.deg,
-    velocity_offset=6 * u.km / u.s, threads=8, distance=128 * u.pc,
+    velocity_offset=6 * u.km / u.s, threads=2, distance=128 * u.pc,
 )
 
 # physics.plot_density()

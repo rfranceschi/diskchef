@@ -220,7 +220,6 @@ class RadMCTherm(RadMCBase):
         self.logger.info("radmc3d finished after %s", timedelta(seconds=time.time() - start))
         self.catch_radmc_messages(proc)
 
-
 @dataclass
 class RadMCRT(RadMCBase):
     """
@@ -239,6 +238,7 @@ class RadMCRT(RadMCBase):
         super().create_files()
         self.lines()
         self.gas_velocity()
+        self.gas_temperature()
 
         for molecule in self.molecules_list:
             self.numberdens(species=molecule)
