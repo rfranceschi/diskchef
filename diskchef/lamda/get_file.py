@@ -27,7 +27,9 @@ def file(species: str) -> List[str]:
     'co.dat'
     >>> os.path.basename(file('HCO+')[0])
     'hco+@xpol.dat'
+    >>> os.path.basename(file('pH2CO')[0])
+    'ph2co-h2.dat'
     """
-    regexp = re.compile(fr"\{os.path.sep}{re.escape(species.lower())}(?:@\w*)?[^a-z1-9+\{os.path.sep}]*\.dat$")
+    regexp = re.compile(fr"\{os.path.sep}{re.escape(species.lower())}(?:@\w*)?(?:[-_]h2)?[^a-z1-9+\{os.path.sep}]*\.dat$")
     matching_files = [file for file in LAMDA_FILES if re.search(regexp, file)]
     return matching_files

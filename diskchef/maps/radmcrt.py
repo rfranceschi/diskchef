@@ -84,7 +84,7 @@ class RadMCBase(MapBase):
         self.polar_table['Theta'] = THETA.flatten() << u.rad
         self.polar_table['Altitude'] = (np.pi / 2 * u.rad - self.polar_table['Theta']) << u.rad
         self.polar_table['Height'] = self.polar_table['Distance to star'] * np.sin(self.polar_table['Altitude'])
-        self.polar_table['Radius'] = self.polar_table['Distance to star'] * np.sin(self.polar_table['Altitude'])
+        self.polar_table['Radius'] = self.polar_table['Distance to star'] * np.cos(self.polar_table['Altitude'])
         self.polar_table.sort(['Theta', 'Distance to star'])
         self.interpolate('n(H+2H2)')
         self.polar_table['Velocity R'] = 0 * u.cm / u.s

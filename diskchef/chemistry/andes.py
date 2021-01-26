@@ -43,7 +43,10 @@ class ReadAndesData(ChemistryBase):
             ],
             names=["Radius", "Height"]
         )
-        table["Height to radius"] = chemistry["Relative Height"]
+        if "Relative Height" in chemistry.colnames:
+            table["Height to radius"] = chemistry["Relative Height"]
+        else:
+            table["Height to radius"] = chemistry["Height"] / chemistry["Radius"]
         table["Gas density"] = physics["Gas density"] << (u.g / u.cm ** 3)
         table["Dust density"] = physics["Dust density"] << (u.g / u.cm ** 3)
         table["Gas temperature"] = physics["Gas temperature"] << (u.K)
