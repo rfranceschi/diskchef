@@ -80,16 +80,17 @@ class RadMCBase(MapBase):
 
         R, THETA = np.meshgrid(radii, theta)
         self.polar_table = CTable()
-        self.polar_table['Radius'] = R.flatten()
+        self.polar_table['Distance to star'] = R.flatten()
         self.polar_table['Theta'] = THETA.flatten() << u.rad
         self.polar_table['Altitude'] = (np.pi / 2 * u.rad - self.polar_table['Theta']) << u.rad
-        self.polar_table['Height'] = self.polar_table['Radius'] * np.sin(self.polar_table['Altitude'])
-        self.polar_table.sort(['Theta', 'Radius'])
+        self.polar_table['Height'] = self.polar_table['Distance to star'] * np.sin(self.polar_table['Altitude'])
+        self.polar_table['Radius'] = self.polar_table['Distance to star'] * np.sin(self.polar_table['Altitude'])
+        self.polar_table.sort(['Theta', 'Distance to star'])
         self.interpolate('n(H+2H2)')
         self.polar_table['Velocity R'] = 0 * u.cm / u.s
         self.polar_table['Velocity Theta'] = 0 * u.cm / u.s
         self.polar_table['Velocity Phi'] = \
-            np.sqrt(c.G * self.chemistry.physics.star_mass / self.polar_table['Radius']).to(u.cm / u.s)
+            np.sqrt(c.G * self.chemistry.physics.star_mass / self.polar_table['Distance to star']).to(u.cm / u.s)
 
         self.nrcells = (len(self.radii_edges) - 1) * (len(self.theta_edges) - 1)
         self.fitsfiles = []
