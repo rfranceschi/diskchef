@@ -15,11 +15,16 @@ from diskchef.physics.williams_best import WilliamsBest2014
 @dataclass
 class ChemistryBase:
     physics: PhysicsBase = None
+    mean_molecular_mass: u.g / u.mol = 2.33 * u.g / u.mol
 
     def __post_init__(self):
         self.logger = logging.getLogger(__name__ + '.' + self.__class__.__qualname__)
         self.logger.info("Creating an instance of %s", self.__class__.__qualname__)
         self.logger.debug("With parameters: %s", self.__dict__)
+        try:
+            self.update_hydrogen_atom_number_density()
+        except KeyError as e:
+            self.logger.warning("'Gas density' is not defined in physics.table of %s: %s", self.physics, e)
 
     @property
     def table(self):
@@ -45,6 +50,10 @@ class ChemistryBase:
             data1=self.table["H2 column density towards star"],
             normalizer=colors.LogNorm(1e10, 1e30)
         )
+
+    def update_hydrogen_atom_number_density(self):
+        """Calculates the hydrogen atom density used to scale all other atoms to"""
+        self.table["n(H+2H2)"] = self.table["Gas density"] / self.mean_molecular_mass * const.N_A
 
 
 @dataclass
@@ -97,18 +106,6 @@ class ChemistryModel(ChemistryBase):
 
     """
     initial_abundances: Abundances = Abundances()
-    mean_molecular_mass: u.g / u.mol = 2.33 * u.g / u.mol
-
-    def __post_init__(self):
-        super().__post_init__()
-        try:
-            self.update_hydrogen_atom_number_density()
-        except KeyError as e:
-            self.logger.warning("'Gas density' is not defined in physics.table of %s: %s", self.physics, e)
-
-    def update_hydrogen_atom_number_density(self):
-        """Calculates the hydrogen atom density used to scale all other atoms to"""
-        self.table["n(H+2H2)"] = self.table["Gas density"] / self.mean_molecular_mass * const.N_A
 
     def run_chemistry(self):
         """Writes the output of the chemical model into self.table
