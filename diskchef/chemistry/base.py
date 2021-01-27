@@ -1,4 +1,6 @@
 from dataclasses import dataclass
+
+from diskchef.engine.exceptions import CHEFNotImplementedError
 import logging
 
 from astropy import units as u, constants as const
@@ -23,6 +25,10 @@ class ChemistryBase:
     def table(self):
         """Shortcut for self.physics.table"""
         return self.physics.table
+
+    def run_chemistry(self):
+        """Writes the output of the chemical model into self.table"""
+        raise CHEFNotImplementedError
 
     def plot_chemistry(self, table=None):
         if table is None:
