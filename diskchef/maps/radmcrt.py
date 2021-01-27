@@ -20,7 +20,7 @@ import diskchef.physics
 from diskchef.engine.ctable import CTable
 from diskchef.engine.exceptions import CHEFNotImplementedError, CHEFTypeError
 from diskchef.engine.other import PathLike
-from diskchef.lamda import file
+from diskchef.lamda import lamda_files
 from diskchef.lamda.line import Line
 from diskchef.maps.base import MapBase
 
@@ -52,16 +52,17 @@ class RadMCBase(MapBase):
         except FileExistsError:
             self.logger.warn("Directory %s already exists! The results can be biased.", self.folder)
 
-        # TODO grid which is independent from the original grid
         if self.radii_bins is None:
             radii = np.sort(np.unique(self.table.r)).to(u.cm)
             if self.outer_radius is not None:
                 radii = radii[radii <= self.outer_radius]
+                self._check_outer_radius()
         elif isinstance(self.radii_bins, int):
             if self.outer_radius is None:
                 outer_radius = self.table.r.max()
             else:
                 outer_radius = self.outer_radius
+                self._check_outer_radius()
             radii = np.geomspace(self.table.r.min(), outer_radius, self.radii_bins).to(u.cm)
         else:
             raise CHEFTypeError("radii_bins should be None or int, not %s (%s)", type(self.radii_bins), self.radii_bins)
@@ -96,6 +97,12 @@ class RadMCBase(MapBase):
         self.fitsfiles = []
         """List of created FITS files"""
         self.outputs = {}
+
+    def _check_outer_radius(self):
+        pass
+        # total_mass = np.trapz(self.table.r * np.trapz(self.table["Gas density"], self.table.z))
+        # total_mass_outside_outer_radius = np.trapz(self.table.r * )
+        # self.logger.warning("The outer radius %s contains only %s per cent of the total disk mass", self.outer_radius)
 
     @property
     def mode(self) -> str:
@@ -247,7 +254,7 @@ class RadMCRT(RadMCBase):
         self.logger.info("Line files written to %s", self.folder)
 
     def gas_temperature(self, out_file: PathLike = None) -> None:
-        """Writes the gas temperature file"""
+        """Writes the gas temperature lamda_files"""
 
         if out_file is None:
             out_file = os.path.join(self.folder, 'gas_temperature.inp')
@@ -260,7 +267,7 @@ class RadMCRT(RadMCBase):
             print('\n'.join(f"{entry:.7e}" for entry in self.polar_table['Gas temperature'].to(u.K).value), file=file)
 
     def numberdens(self, species: str, out_file: PathLike = None) -> None:
-        """Writes the gas number density file"""
+        """Writes the gas number density lamda_files"""
 
         if out_file is None:
             out_file = os.path.join(self.folder, f'numberdens_{species}.inp')
@@ -279,7 +286,7 @@ class RadMCRT(RadMCBase):
 
     def molecule(self, species: str, out_file: PathLike = None) -> None:
         """
-        Copies the molecule transition file into working directory
+        Copies the molecule transition lamda_files into working directory
 
         species:    str     name of the molecule
         """
@@ -287,7 +294,7 @@ class RadMCRT(RadMCBase):
         if out_file is None:
             out_file = os.path.join(self.folder, f'molecule_{species}.inp')
 
-        shutil.copy(file(species)[0], out_file)
+        shutil.copy(lamda_files(species)[0], out_file)
 
     def lines(self, out_file: PathLike = None) -> None:
         self.molecules_list = sorted(list(set([line.molecule for line in self.line_list])))
@@ -304,7 +311,6 @@ class RadMCRT(RadMCBase):
                 print('\n'.join(coll_partners), file=file)
 
     def gas_velocity(self, out_file: PathLike = None) -> None:
-
         if out_file is None:
             out_file = os.path.join(self.folder, 'gas_velocity.inp')
         with open(out_file, 'w') as file:
@@ -373,10 +379,10 @@ class RadMCRT(RadMCBase):
         self.outputs[lineobj] = output
 
     def radmc_to_fits(self, name: PathLike, line: Line, distance: float) -> PathLike:
-        """Saves RadMC3D `image.out` file as FITS file
+        """Saves RadMC3D `image.out` lamda_files as FITS lamda_files
 
         Returns:
-            name of a newly created fits file
+            name of a newly created fits lamda_files
         """
         im = radmc3dPy.image.readImage(fname=name)
         fitsname = name.replace(".out", ".fits")

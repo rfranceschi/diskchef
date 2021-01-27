@@ -2,6 +2,6 @@
 
 Important:
 
-`diskchef.dust_opacity.file` -- function to get absolute path to an opacity file by species name
+`diskchef.dust_opacity.dust_files` -- function to get absolute path to an opacity files by species name
 """
-from diskchef.dust_opacity.get_file import file, DUST_OPACITY_FILES
+from diskchef.dust_opacity.dust_files import dust_files, DUST_OPACITY_FILES

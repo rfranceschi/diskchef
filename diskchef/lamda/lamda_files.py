@@ -9,7 +9,7 @@ LAMDA_FILES = glob(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'fil
 """Unsorted list of paths to all LAMDA database file. Use `file` to find a file for the species"""
 
 
-def file(species: str) -> List[str]:
+def lamda_files(species: str) -> List[str]:
     """
     Returns a list of absolute paths to matched LAMDA database file
 
@@ -20,14 +20,14 @@ def file(species: str) -> List[str]:
 
     Usage:
 
-    >>> out = file('CO')
+    >>> out = lamda_files('CO')
     >>> isinstance(out, list)
     True
     >>> os.path.basename(out[0])
     'co.dat'
-    >>> os.path.basename(file('HCO+')[0])
+    >>> os.path.basename(lamda_files('HCO+')[0])
     'hco+@xpol.dat'
-    >>> os.path.basename(file('pH2CO')[0])
+    >>> os.path.basename(lamda_files('pH2CO')[0])
     'ph2co-h2.dat'
     """
     regexp = re.compile(fr"\{os.path.sep}{re.escape(species.lower())}(?:@\w*)?(?:[-_]h2)?[^a-z1-9+\{os.path.sep}]*\.dat$")
