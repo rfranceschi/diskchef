@@ -1,5 +1,5 @@
 import glob
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 import numpy as np
 import os
@@ -17,10 +17,11 @@ from matplotlib.colors import Normalize
 from typing import Union
 
 import diskchef.physics
+import diskchef.physics.yorke_bodenheimer
 from diskchef.engine.ctable import CTable
 from diskchef.engine.exceptions import CHEFNotImplementedError, CHEFTypeError
 from diskchef.engine.other import PathLike
-from diskchef.lamda import file
+from diskchef.lamda import lamda_files
 from diskchef.lamda.line import Line
 from diskchef.maps.base import MapBase
 
@@ -34,21 +35,18 @@ class RadMCOutput:
 
 
 @dataclass
-class RadMCRT(MapBase):
-    """
-    Class with interface to run RadMC3D by Cornelis Dullemond
-
-    By initialization creates the basic table (`self.polar_table`) with the grid in polar RadMC3D coordinates.
-    """
+class RadMCBase(MapBase):
     executable: PathLike = 'radmc3d'
-    verbosity: int = 0
     folder: PathLike = 'radmc'
     radii_bins: Union[None, int] = None
     theta_bins: Union[None, int] = None
     outer_radius: Union[None, u.Quantity] = None
+    verbosity: int = 0
+    wavelengths: u.Quantity = field(default=np.geomspace(0.1, 1000, 100) * u.um)
+    modified_random_walk: bool = True
 
     def __post_init__(self):
-        super(RadMCRT, self).__post_init__()
+        super().__post_init__()
         if not self.table.is_in_zr_regular_grid:
             raise CHEFNotImplementedError
 
@@ -57,16 +55,17 @@ class RadMCRT(MapBase):
         except FileExistsError:
             self.logger.warn("Directory %s already exists! The results can be biased.", self.folder)
 
-        # TODO grid which is independent from the original grid
         if self.radii_bins is None:
             radii = np.sort(np.unique(self.table.r)).to(u.cm)
             if self.outer_radius is not None:
                 radii = radii[radii <= self.outer_radius]
+                self._check_outer_radius()
         elif isinstance(self.radii_bins, int):
             if self.outer_radius is None:
                 outer_radius = self.table.r.max()
             else:
                 outer_radius = self.outer_radius
+                self._check_outer_radius()
             radii = np.geomspace(self.table.r.min(), outer_radius, self.radii_bins).to(u.cm)
         else:
             raise CHEFTypeError("radii_bins should be None or int, not %s (%s)", type(self.radii_bins), self.radii_bins)
@@ -85,21 +84,40 @@ class RadMCRT(MapBase):
 
         R, THETA = np.meshgrid(radii, theta)
         self.polar_table = CTable()
-        self.polar_table['Radius'] = R.flatten()
+        self.polar_table['Distance to star'] = R.flatten()
         self.polar_table['Theta'] = THETA.flatten() << u.rad
         self.polar_table['Altitude'] = (np.pi / 2 * u.rad - self.polar_table['Theta']) << u.rad
-        self.polar_table['Height'] = self.polar_table['Radius'] * np.sin(self.polar_table['Altitude'])
-        self.polar_table.sort(['Theta', 'Radius'])
+        self.polar_table['Height'] = self.polar_table['Distance to star'] * np.sin(self.polar_table['Altitude'])
+        self.polar_table['Radius'] = self.polar_table['Distance to star'] * np.cos(self.polar_table['Altitude'])
+        self.polar_table.sort(['Theta', 'Distance to star'])
         self.interpolate('n(H+2H2)')
         self.polar_table['Velocity R'] = 0 * u.cm / u.s
         self.polar_table['Velocity Theta'] = 0 * u.cm / u.s
         self.polar_table['Velocity Phi'] = \
-            np.sqrt(c.G * self.chemistry.physics.star_mass / self.polar_table['Radius']).to(u.cm / u.s)
+            np.sqrt(c.G * self.chemistry.physics.star_mass / self.polar_table['Distance to star']).to(u.cm / u.s)
 
         self.nrcells = (len(self.radii_edges) - 1) * (len(self.theta_edges) - 1)
         self.fitsfiles = []
         """List of created FITS files"""
         self.outputs = {}
+
+    def _check_outer_radius(self):
+        pass
+        # total_mass = np.trapz(self.table.r * np.trapz(self.table["Gas density"], self.table.z))
+        # total_mass_outside_outer_radius = np.trapz(self.table.r * )
+        # self.logger.warning("The outer radius %s contains only %s per cent of the total disk mass", self.outer_radius)
+
+    @property
+    def mode(self) -> str:
+        """Mode of RadMC: `mctherm`, `image`, `spectrum`, `sed`"""
+        raise NotImplementedError
+
+    def catch_radmc_messages(self, proc: subprocess.CompletedProcess) -> None:
+        """Raises RadMC warnings and errors in `self.logger`"""
+        if proc.stderr: self.logger.error(proc.stderr)
+        self.logger.debug(proc.stdout)
+        for match in re.finditer(r"WARNING:(.*\n(?:  .*\n){2,})", proc.stdout):
+            self.logger.warn(match.group(1))
 
     def interpolate(self, column: str) -> None:
         """Adds a new `column` to `self.polar_table` with the data iterpolated from `self.table`"""
@@ -110,13 +128,6 @@ class RadMCRT(MapBase):
         self.radmc3d()
         self.wavelength_micron()
         self.amr_grid()
-        self.gas_temperature()
-        self.lines()
-        self.gas_velocity()
-
-        for molecule in self.molecules_list:
-            self.numberdens(species=molecule)
-            self.molecule(species=molecule)
         self.logger.info("Files written to %s", self.folder)
 
     def radmc3d(self, out_file: PathLike = None) -> None:
@@ -125,8 +136,9 @@ class RadMCRT(MapBase):
         if out_file is None:
             out_file = os.path.join(self.folder, 'radmc3d.inp')
 
-        with open(out_file, 'a') as file:
-            pass
+        with open(out_file, 'w') as file:
+            if self.modified_random_walk:
+                print("modified_random_walk = 1", file=file)
 
     def wavelength_micron(self, out_file: PathLike = None) -> None:
         """Creates a `wavelength_micron.inp` file"""
@@ -134,11 +146,9 @@ class RadMCRT(MapBase):
         if out_file is None:
             out_file = os.path.join(self.folder, 'wavelength_micron.inp')
 
-        wavelengths = np.geomspace(0.1, 1000, 100)
-
         with open(out_file, 'w') as file:
-            print(len(wavelengths), file=file)
-            print('\n'.join(f"{entry:.7e}" for entry in wavelengths), file=file)
+            print(len(self.wavelengths), file=file)
+            print('\n'.join(f"{entry.to(u.um).value:.7e}" for entry in self.wavelengths), file=file)
 
     def amr_grid(self, out_file: PathLike = None) -> None:
         """Creates a `amr_grid.inp` file"""
@@ -159,8 +169,157 @@ class RadMCRT(MapBase):
             print(' '.join(f"{entry:.7e}" for entry in self.theta_edges), file=file)
             print(0, 2 * np.pi, file=file)
 
+    @u.quantity_input
+    def run(
+            self,
+            inclination: u.deg = 0 * u.deg, position_angle: u.deg = 0 * u.deg,
+            distance: u.pc = 140 * u.pc, velocity_offset: u.km / u.s = 0 * u.km / u.s,
+            threads: int = 1, npix: int = 100,
+    ) -> None:
+        """Run RadMC3D after files were created with `create_files()`"""
+        raise CHEFNotImplementedError
+
+
+@dataclass
+class RadMCTherm(RadMCBase):
+    star_radius: Union[None, u.Quantity] = None
+    star_effective_temperature: Union[None, u.Quantity] = None
+
+    def __post_init__(self):
+        super().__post_init__()
+        self.dust_species = self.chemistry.table.meta["Dust list"]
+        yb08 = diskchef.physics.yorke_bodenheimer.YorkeBodenheimer2008()
+        if (self.star_radius is None) and (self.star_effective_temperature is not None):
+            self.star_radius = yb08.radius(self.chemistry.physics.star_mass)
+            self.logger.warn(
+                "Only star effective temperature was given, not star radius! Taking radius from trktime0210")
+        elif (self.star_radius is not None) and (self.star_effective_temperature is None):
+            self.star_effective_temperature = yb08.effective_temperature(self.chemistry.physics.star_mass)
+            self.logger.warn(
+                "Only  star radius was given, not effective temperature! Taking effective temperature from trktime0210")
+        elif (self.star_radius is None) and (self.star_effective_temperature is None):
+            self.star_radius = yb08.radius(self.chemistry.physics.star_mass)
+            self.star_effective_temperature = yb08.effective_temperature(self.chemistry.physics.star_mass)
+            self.logger.info("Taking effective temperature and radius from trktime0210")
+
+    @property
+    def mode(self) -> str:
+        """Mode of RadMC: `mctherm`, `image`, `spectrum`, `sed`"""
+        return "mctherm"
+
+    def create_files(self) -> None:
+        super().create_files()
+        self.dustopac()
+        self.dust_density()
+        self.stars()
+
+    def stars(self, out_file: PathLike = None) -> None:
+        """Writes the `stars.inp` file"""
+        if out_file is None:
+            out_file = os.path.join(self.folder, 'stars.inp')
+        with open(out_file, 'w') as file:
+            print('2', file=file)  # Typically 2 at present
+            print(f'1 {len(self.wavelengths)}', file=file)  # number of stars, wavelengths
+            print(f'{self.star_radius.to(u.cm).value} '
+                  f'{self.chemistry.physics.star_mass.to(u.g).value} '
+                  f'0 0 0',
+                  file=file)
+            print('\n'.join(f"{entry.to(u.um).value:.7e}" for entry in self.wavelengths), file=file)
+            print(-self.star_effective_temperature.to(u.K).value, file=file)
+
+    def dustopac(self, out_file: PathLike = None) -> None:
+        """Writes the `dustopac.inp` file"""
+        if out_file is None:
+            out_file = os.path.join(self.folder, 'dustopac.inp')
+        with open(out_file, 'w') as file:
+            print('2', file=file)  # Typically 2 at present
+            print(len(self.dust_species), file=file)  # Number of species
+            for dust_spice in self.dust_species:
+                print('-----------------------------', file=file)
+                type = "dustkapscatmat_" if os.path.basename(dust_spice.opacity_file).startswith(
+                    "dustkapscatmat_") else "dustkappa_"
+                print('10' if type == "dustkapscatmat_" else '1', file=file)
+                print('0', file=file)
+                name_without_whitespaces = re.sub(r"\s*", "", dust_spice.name)
+                print(name_without_whitespaces, file=file)
+                shutil.copy(dust_spice.opacity_file, os.path.join(self.folder, f"{type}{name_without_whitespaces}.inp"))
+            print('-----------------------------', file=file)
+
+    def dust_density(self, out_file: PathLike = None) -> None:
+        """Writes the dust density file"""
+        if out_file is None:
+            out_file = os.path.join(self.folder, 'dust_density.inp')
+        self.interpolate("Dust density")
+        with open(out_file, 'w') as file:
+            print('1', file=file)  # Typically 1 at present
+            print(self.nrcells, file=file)
+            print(len(self.dust_species), file=file)  # Number of species
+            for dust_spice in self.dust_species:
+                self.interpolate(f"{dust_spice.name} mass fraction")
+                print(
+                    '\n'.join(
+                        f"{entry:.7e}" for entry
+                        in (
+                                self.polar_table["Dust density"]
+                                * self.polar_table[f"{dust_spice.name} mass fraction"]
+                        ).to(u.g * u.cm ** (-3)).value),
+                    file=file
+                )
+
+    @u.quantity_input
+    def run(
+            self,
+            inclination: u.deg = 0 * u.deg, position_angle: u.deg = 0 * u.deg,
+            distance: u.pc = 140 * u.pc, velocity_offset: u.km / u.s = 0 * u.km / u.s,
+            threads: int = 1, npix: int = 100,
+    ) -> None:
+        self.logger.info("Running radmc3d")
+        start = time.time()
+        command = (f"{self.executable} {self.mode} "
+                   f"setthreads {threads} "
+                   )
+        self.logger.info("Running radmc3d for dust temperature calculation: %s", command)
+        proc = subprocess.run(
+            command,
+            cwd=self.folder,
+            text=True,
+            capture_output=True,
+            shell=True
+        )
+        self.polar_table["RadMC Dust temperature"] = np.loadtxt(
+            os.path.join(self.folder, "dust_temperature.dat")
+        )[3:] << u.K
+        self.logger.info("radmc3d finished after %s", timedelta(seconds=time.time() - start))
+        self.catch_radmc_messages(proc)
+
+
+@dataclass
+class RadMCRT(RadMCBase):
+    """
+    Class with interface to run RadMC3D by Cornelis Dullemond
+
+    By initialization creates the basic table (`self.polar_table`) with the grid in polar RadMC3D coordinates.
+    """
+
+    @property
+    def mode(self) -> str:
+        """Mode of RadMC: `mctherm`, `image`, `spectrum`, `sed`"""
+        return 'image'
+
+    def create_files(self) -> None:
+        """Creates all the files necessary to run RadMC3D"""
+        super().create_files()
+        self.lines()
+        self.gas_velocity()
+        self.gas_temperature()
+
+        for molecule in self.molecules_list:
+            self.numberdens(species=molecule)
+            self.molecule(species=molecule)
+        self.logger.info("Line files written to %s", self.folder)
+
     def gas_temperature(self, out_file: PathLike = None) -> None:
-        """Writes the gas temperature file"""
+        """Writes the gas temperature lamda_files"""
 
         if out_file is None:
             out_file = os.path.join(self.folder, 'gas_temperature.inp')
@@ -173,7 +332,7 @@ class RadMCRT(MapBase):
             print('\n'.join(f"{entry:.7e}" for entry in self.polar_table['Gas temperature'].to(u.K).value), file=file)
 
     def numberdens(self, species: str, out_file: PathLike = None) -> None:
-        """Writes the gas number density file"""
+        """Writes the gas number density lamda_files"""
 
         if out_file is None:
             out_file = os.path.join(self.folder, f'numberdens_{species}.inp')
@@ -192,7 +351,7 @@ class RadMCRT(MapBase):
 
     def molecule(self, species: str, out_file: PathLike = None) -> None:
         """
-        Copies the molecule transition file into working directory
+        Copies the molecule transition lamda_files into working directory
 
         species:    str     name of the molecule
         """
@@ -200,7 +359,7 @@ class RadMCRT(MapBase):
         if out_file is None:
             out_file = os.path.join(self.folder, f'molecule_{species}.inp')
 
-        shutil.copy(file(species)[0], out_file)
+        shutil.copy(lamda_files(species)[0], out_file)
 
     def lines(self, out_file: PathLike = None) -> None:
         self.molecules_list = sorted(list(set([line.molecule for line in self.line_list])))
@@ -217,7 +376,6 @@ class RadMCRT(MapBase):
                 print('\n'.join(coll_partners), file=file)
 
     def gas_velocity(self, out_file: PathLike = None) -> None:
-
         if out_file is None:
             out_file = os.path.join(self.folder, 'gas_velocity.inp')
         with open(out_file, 'w') as file:
@@ -256,7 +414,7 @@ class RadMCRT(MapBase):
             n_channels: int = 100, threads: int = 1, lineobj: Line = None, npix: int = 100
     ) -> None:
         start = time.time()
-        command = (f"{self.executable} image "
+        command = (f"{self.executable} {self.mode} "
                    f"imolspec {molecule} "
                    f"iline {line} "
                    f"widthkms 10 "
@@ -286,10 +444,10 @@ class RadMCRT(MapBase):
         self.outputs[lineobj] = output
 
     def radmc_to_fits(self, name: PathLike, line: Line, distance: float) -> PathLike:
-        """Saves RadMC3D `image.out` file as FITS file
+        """Saves RadMC3D `image.out` lamda_files as FITS lamda_files
 
         Returns:
-            name of a newly created fits file
+            name of a newly created fits lamda_files
         """
         im = radmc3dPy.image.readImage(fname=name)
         fitsname = name.replace(".out", ".fits")
@@ -303,13 +461,6 @@ class RadMCRT(MapBase):
         self.logger.debug("Modified FITS header unit: HZ to Hz, JY/PX to Jy pix**(-1), set RESTFREQ %s Hz",
                           restfreq)
         return fitsname
-
-    def catch_radmc_messages(self, proc: subprocess.CompletedProcess) -> None:
-        """Raises RadMC warnings and errors in `self.logger`"""
-        if proc.stderr: self.logger.error(proc.stderr)
-        self.logger.debug(proc.stdout)
-        for match in re.finditer(r"WARNING:(.*\n(?:  .*\n){2,})", proc.stdout):
-            self.logger.warn(match.group(1))
 
     def copy_for_propype(self, folder: PathLike = None) -> None:
         """Creates a copy of `self.fitsfiles` in a format which is ready to run them through PRODIGE pipeline"""
@@ -437,7 +588,7 @@ class RadMCRTSingleCall(RadMCRT):
     ) -> None:
         self.logger.info("Running radmc3d")
         start = time.time()
-        command = (f"{self.executable} image "
+        command = (f"{self.executable} {self.mode} "
                    f"incl {inclination.to(u.deg).value} "
                    f"posang {position_angle.to(u.deg).value} "
                    f"setthreads {threads} "

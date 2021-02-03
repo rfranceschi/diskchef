@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+import os
 
 from astropy import units as u
 
@@ -47,7 +48,7 @@ class Line:
     def parse_lamda(self, lamda_file: PathLike = None):
         """Parses LAMDA database file to identify collision partner and frequency"""
         if lamda_file is None:
-            lamda_file = diskchef.lamda.file(self.molecule)[0]
+            lamda_file = diskchef.lamda.lamda_files(self.molecule)[0]
         with open(lamda_file) as lamda:
             lamda.readline()
             self.lamda_molecule = lamda.readline().strip()

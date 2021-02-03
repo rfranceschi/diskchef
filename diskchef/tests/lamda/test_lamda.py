@@ -21,4 +21,4 @@ def test_lamda_is_found():
     ]
 )
 def test_get_lamda(species, expected):
-    assert len(diskchef.lamda.file(species)) == expected
+    assert len(diskchef.lamda.lamda_files(species)) == expected

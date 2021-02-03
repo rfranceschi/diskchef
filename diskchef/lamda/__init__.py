@@ -5,6 +5,6 @@ Schöier, F.L., van der Tak, F.F.S., van Dishoeck E.F., Black, J.H. 2005, A&A 43
 
 Important:
 
-`diskchef.lamda.file` -- function to get absolute path to a LAMDA file by species name
+`diskchef.lamda.lamda_files` -- function to get absolute path to a LAMDA file by species name
 """
-from diskchef.lamda.get_file import file, LAMDA_FILES
+from diskchef.lamda.lamda_files import lamda_files, LAMDA_FILES
