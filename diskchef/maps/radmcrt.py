@@ -21,7 +21,6 @@ import diskchef.physics.yorke_bodenheimer
 from diskchef.engine.ctable import CTable
 from diskchef.engine.exceptions import CHEFNotImplementedError, CHEFTypeError
 from diskchef.engine.other import PathLike
-from diskchef.lamda import lamda_files
 from diskchef.lamda.line import Line
 from diskchef.maps.base import MapBase
 
@@ -315,11 +314,11 @@ class RadMCRT(RadMCBase):
 
         for molecule in self.molecules_list:
             self.numberdens(species=molecule)
-            self.molecule(species=molecule)
+            self.molecule(species=molecule, file=self.lamda_files_dict[molecule])
         self.logger.info("Line files written to %s", self.folder)
 
     def gas_temperature(self, out_file: PathLike = None) -> None:
-        """Writes the gas temperature lamda_files"""
+        """Writes the gas temperature files"""
 
         if out_file is None:
             out_file = os.path.join(self.folder, 'gas_temperature.inp')
@@ -332,7 +331,7 @@ class RadMCRT(RadMCBase):
             print('\n'.join(f"{entry:.7e}" for entry in self.polar_table['Gas temperature'].to(u.K).value), file=file)
 
     def numberdens(self, species: str, out_file: PathLike = None) -> None:
-        """Writes the gas number density lamda_files"""
+        """Writes the gas number density files"""
 
         if out_file is None:
             out_file = os.path.join(self.folder, f'numberdens_{species}.inp')
@@ -349,9 +348,9 @@ class RadMCRT(RadMCBase):
                 file=file
             )
 
-    def molecule(self, species: str, out_file: PathLike = None) -> None:
+    def molecule(self, species: str, lamda_file: PathLike,  out_file: PathLike = None) -> None:
         """
-        Copies the molecule transition lamda_files into working directory
+        Copies the molecule transition files into working directory
 
         species:    str     name of the molecule
         """
@@ -359,10 +358,13 @@ class RadMCRT(RadMCBase):
         if out_file is None:
             out_file = os.path.join(self.folder, f'molecule_{species}.inp')
 
-        shutil.copy(lamda_files(species)[0], out_file)
+        shutil.copy(lamda_file, out_file)
 
     def lines(self, out_file: PathLike = None) -> None:
         self.molecules_list = sorted(list(set([line.molecule for line in self.line_list])))
+        self.lamda_files_dict = {
+            line.molecule: line.lamda_file for line in self.line_list
+        }
 
         if out_file is None:
             out_file = os.path.join(self.folder, 'lines.inp')
@@ -444,10 +446,10 @@ class RadMCRT(RadMCBase):
         self.outputs[lineobj] = output
 
     def radmc_to_fits(self, name: PathLike, line: Line, distance: float) -> PathLike:
-        """Saves RadMC3D `image.out` lamda_files as FITS lamda_files
+        """Saves RadMC3D `image.out` files as FITS files
 
         Returns:
-            name of a newly created fits lamda_files
+            name of a newly created fits files
         """
         im = radmc3dPy.image.readImage(fname=name)
         fitsname = name.replace(".out", ".fits")
