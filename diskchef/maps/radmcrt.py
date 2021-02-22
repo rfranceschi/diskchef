@@ -43,6 +43,7 @@ class RadMCBase(MapBase):
     verbosity: int = 0
     wavelengths: u.Quantity = field(default=np.geomspace(0.1, 1000, 100) * u.um)
     modified_random_walk: bool = True
+    nphot_therm: int = None
 
     def __post_init__(self):
         super().__post_init__()
@@ -89,7 +90,6 @@ class RadMCBase(MapBase):
         self.polar_table['Height'] = self.polar_table['Distance to star'] * np.sin(self.polar_table['Altitude'])
         self.polar_table['Radius'] = self.polar_table['Distance to star'] * np.cos(self.polar_table['Altitude'])
         self.polar_table.sort(['Theta', 'Distance to star'])
-        self.interpolate('n(H+2H2)')
         self.polar_table['Velocity R'] = 0 * u.cm / u.s
         self.polar_table['Velocity Theta'] = 0 * u.cm / u.s
         self.polar_table['Velocity Phi'] = \
@@ -122,6 +122,10 @@ class RadMCBase(MapBase):
         """Adds a new `column` to `self.polar_table` with the data iterpolated from `self.table`"""
         self.polar_table[column] = self.table.interpolate(column)(self.polar_table.r, self.polar_table.z)
 
+    def interpolate_back(self, column: str) -> None:
+        """Adds a new `column` to `self.table` with the data iterpolated from `self.polar_table`"""
+        self.table[column] = self.polar_table.interpolate(column)(self.table.r, self.table.z)
+
     def create_files(self) -> None:
         """Creates all the files necessary to run RadMC3D"""
         self.radmc3d()
@@ -138,6 +142,8 @@ class RadMCBase(MapBase):
         with open(out_file, 'w') as file:
             if self.modified_random_walk:
                 print("modified_random_walk = 1", file=file)
+            if self.nphot_therm is not None:
+                print(f"nphot_therm = {self.nphot_therm}", file=file)
 
     def wavelength_micron(self, out_file: PathLike = None) -> None:
         """Creates a `wavelength_micron.inp` file"""
@@ -285,11 +291,31 @@ class RadMCTherm(RadMCBase):
             capture_output=True,
             shell=True
         )
+        self.logger.info("radmc3d finished after %s", timedelta(seconds=time.time() - start))
+        self.catch_radmc_messages(proc)
+
+    def read_dust_temperature(self) -> None:
+        """Read RadMC3D dust temperature output into `table`
+
+        Current limitations:
+
+        * Only one dust population
+        """
         self.polar_table["RadMC Dust temperature"] = np.loadtxt(
             os.path.join(self.folder, "dust_temperature.dat")
         )[3:] << u.K
-        self.logger.info("radmc3d finished after %s", timedelta(seconds=time.time() - start))
-        self.catch_radmc_messages(proc)
+        number_of_zeroes = np.sum(self.polar_table["RadMC Dust temperature"] == 0)
+        if number_of_zeroes != 0:
+            self.logger.error("RadMC never achieved %d points. "
+                              "Recalculate with higher nphot_therm "
+                              "and/or remove high-density regions "
+                              "out of the model grid "
+                              "(highly likely, you can forfeit radii ~< 1 au)."
+                              "Values are set to 2.7 K", number_of_zeroes)
+            self.polar_table["RadMC Dust temperature"][self.polar_table["RadMC Dust temperature"] == 0] = 2.7 * u.K
+        self.interpolate_back("RadMC Dust temperature")
+        self.table["Original Dust temperature"] = self.table["Dust temperature"]
+        self.table["Dust temperature"] = self.table["RadMC Dust temperature"]
 
 
 @dataclass
@@ -299,6 +325,10 @@ class RadMCRT(RadMCBase):
 
     By initialization creates the basic table (`self.polar_table`) with the grid in polar RadMC3D coordinates.
     """
+
+    def __post_init__(self):
+        super().__post_init__()
+        self.interpolate("n(H+2H2)")
 
     @property
     def mode(self) -> str:
@@ -314,7 +344,7 @@ class RadMCRT(RadMCBase):
 
         for molecule in self.molecules_list:
             self.numberdens(species=molecule)
-            self.molecule(species=molecule, file=self.lamda_files_dict[molecule])
+            self.molecule(species=molecule, lamda_file=self.lamda_files_dict[molecule])
         self.logger.info("Line files written to %s", self.folder)
 
     def gas_temperature(self, out_file: PathLike = None) -> None:
@@ -348,7 +378,7 @@ class RadMCRT(RadMCBase):
                 file=file
             )
 
-    def molecule(self, species: str, lamda_file: PathLike,  out_file: PathLike = None) -> None:
+    def molecule(self, species: str, lamda_file: PathLike, out_file: PathLike = None) -> None:
         """
         Copies the molecule transition files into working directory
 

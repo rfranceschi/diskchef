@@ -113,7 +113,7 @@ class CTable(QTable):
         # TODO non-linear interpolation
         def _interpolation(r: u.au, z: u.au):
             interpolated = griddata(
-                points=(self.r, self.z),
+                points=(self.r.to(u.au).value, self.z.to(u.au).value),
                 values=self[column],
                 xi=(r.to(u.au).value, z.to(u.au).value),
                 fill_value=0
