@@ -143,7 +143,7 @@ class RadMCBase(MapBase):
             if self.modified_random_walk:
                 print("modified_random_walk = 1", file=file)
             if self.nphot_therm is not None:
-                print(f"nphot_therm = {self.nphot_therm}", file=file)
+                print(f"nphot_therm = {int(self.nphot_therm)}", file=file)
 
     def wavelength_micron(self, out_file: PathLike = None) -> None:
         """Creates a `wavelength_micron.inp` file"""
