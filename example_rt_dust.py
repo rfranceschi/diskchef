@@ -6,9 +6,7 @@ from matplotlib import pyplot as plt
 from divan import Divan
 
 from diskchef.chemistry.scikit import SciKitChemistry
-from diskchef.chemistry.base import ChemistryBase
-from diskchef.lamda.line import Line
-from diskchef.maps.radmcrt import RadMCTherm
+from diskchef.maps import RadMCTherm
 from diskchef.physics.williams_best import WilliamsBest2014
 from diskchef.physics.multidust import DustPopulation
 from diskchef.dust_opacity.dust_files import dust_files

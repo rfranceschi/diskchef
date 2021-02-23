@@ -2,6 +2,7 @@ import logging
 import shutil
 from pathlib import Path
 from astropy import units as u
+
 from matplotlib import pyplot as plt
 import spectral_cube
 from astropy.visualization import quantity_support
@@ -12,7 +13,7 @@ from scipy.integrate import trapz
 
 from diskchef.chemistry.andes import ReadAndesData
 from diskchef.lamda.line import Line
-from diskchef.maps.radmcrt import RadMCRTSingleCall
+from diskchef.maps import RadMCRTSingleCall
 
 shutil.rmtree('radmc', ignore_errors=True)
 

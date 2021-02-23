@@ -9,7 +9,7 @@ from matplotlib import pyplot as plt
 
 from diskchef.chemistry.williams_best_co import NonzeroChemistryWB2014
 from diskchef.lamda.line import Line
-from diskchef.maps.radmcrt import RadMCRTSingleCall
+from diskchef.maps import RadMCRTSingleCall
 from diskchef.physics.williams_best import WilliamsBest2014
 
 # Setting logger configuration to control output.
