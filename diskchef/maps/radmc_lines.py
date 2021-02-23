@@ -13,6 +13,7 @@ from astropy import units as u
 from astropy.wcs import WCS
 from spectral_cube import SpectralCube
 
+import diskchef
 from diskchef.engine.other import PathLike
 from diskchef.lamda.line import Line
 from diskchef.maps.radmcrt import RadMCBase, RadMCOutput
