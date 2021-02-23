@@ -1,20 +1,22 @@
 import glob
 from dataclasses import dataclass, field
-
-import numpy as np
 import os
-import radmc3dPy
 import re
+import typing
+from typing import Union
+import time
 import shutil
 import subprocess
-import time
-import typing
+
+import numpy as np
 from astropy import constants as c
 from astropy import units as u
+from astropy.wcs import WCS
 from datetime import timedelta
 from matplotlib import pyplot as plt
 from matplotlib.colors import Normalize
-from typing import Union
+from spectral_cube import SpectralCube
+import radmc3dPy
 
 import diskchef.physics
 import diskchef.physics.yorke_bodenheimer
@@ -472,26 +474,64 @@ class RadMCRT(RadMCBase):
             newname = os.path.join(self.folder, name)
             shutil.move(os.path.join(self.folder, "image.out"), newname)
             output.file_radmc = newname
-            output.file_fits = self.radmc_to_fits(newname, self.line_list[line], distance)
+            output.file_fits = self.radmc_to_fits(newname, self.line_list[line], distance * u.pc)
         self.outputs[lineobj] = output
 
-    def radmc_to_fits(self, name: PathLike, line: Line, distance: float) -> PathLike:
+    def radmc_to_fits(self, name: PathLike, line: Line, distance) -> PathLike:
         """Saves RadMC3D `image.out` files as FITS files
 
         Returns:
             name of a newly created fits files
         """
         im = radmc3dPy.image.readImage(fname=name)
-        fitsname = name.replace(".out", ".fits")
         restfreq = line.frequency.to(u.Hz).value
-        if os.path.exists(fitsname):
-            os.remove(fitsname)
-        im.writeFits(fname=fitsname, nu0=restfreq, dpc=distance,
-                     fitsheadkeys={"CUNIT3": "Hz", "BUNIT": "Jy pix**(-1)", "RESTFREQ": restfreq})
+
+        x_deg = ((im.x << u.cm) / distance).to(u.deg, equivalencies=u.dimensionless_angles())
+        y_deg = ((im.y << u.cm) / distance).to(u.deg, equivalencies=u.dimensionless_angles())
+        freq_hz = (im.freq << u.Hz)
+
+        x_len = len(x_deg)
+        midx_i = x_len // 2
+        midx_val = x_deg[midx_i]
+        mean_x_width = (x_deg[1:] - x_deg[:-1]).mean()
+
+        y_len = len(y_deg)
+        midy_i = y_len // 2
+        midy_val = y_deg[midy_i]
+        mean_y_width = (y_deg[1:] - y_deg[:-1]).mean()
+
+        freq_len = len(freq_hz)
+        midfreq_i = freq_len // 2
+        midfreq_hz = freq_hz[midfreq_i]
+        mean_channel_width = (freq_hz[1:] - freq_hz[:-1]).mean()
+
+        wcs_dict = {
+            'CTYPE3': 'RA---CAR', 'CUNIT3': 'deg',
+            'CDELT3': -mean_x_width.value, 'CRPIX3': midx_i, 'CRVAL3': midx_val.value, 'NAXIS3': x_len,
+            'CTYPE2': 'DEC--CAR', 'CUNIT2': 'deg',
+            'CDELT2': mean_y_width.value, 'CRPIX2': midy_i, 'CRVAL2': midy_val.value, 'NAXIS2': y_len,
+            'CTYPE1': 'FREQ    ', 'CUNIT1': 'Hz',
+            'CDELT1': mean_channel_width.value, 'CRPIX1': midfreq_i, 'CRVAL1': midfreq_hz.value, 'NAXIS1': freq_len,
+
+        }
+
+        header = WCS(wcs_dict).to_header()
+        header["HISTORY"] = "Created with DiskCheF package"
+        header["HISTORY"] = "(G.V. Smirnov-Pinchukov, https://gitlab.com/SmirnGreg/diskchef)"
+        header["HISTORY"] = "using RadMC3D (C. Dullemond, https://github.com/dullemond/radmc3d-2.0)"
+        header["RESTFREQ"] = restfreq
+
+        cube = SpectralCube(
+            data=np.rot90(im.imageJyppix, axes=[0, 1]) << u.Jy,
+            wcs=WCS(wcs_dict), header=header
+        )
+
+        fitsname = name.replace(".out", ".fits")
+
+        cube.write(fitsname, overwrite=True)
+
         self.fitsfiles.append(fitsname)
         self.logger.info("Saved as %s and %s", name, fitsname)
-        self.logger.debug("Modified FITS header unit: HZ to Hz, JY/PX to Jy pix**(-1), set RESTFREQ %s Hz",
-                          restfreq)
         return fitsname
 
     def copy_for_propype(self, folder: PathLike = None) -> None:
@@ -641,7 +681,7 @@ class RadMCRTSingleCall(RadMCRT):
         self.split(names=names)
         for line, name in zip(self.ordered_line_list, names):
             self.outputs[line] = RadMCOutput(line, file_radmc=name)
-            self.outputs[line].file_fits = self.radmc_to_fits(name, line, distance.to(u.pc).value)
+            self.outputs[line].file_fits = self.radmc_to_fits(name, line, distance)
 
     def split(
             self, filename=None,
