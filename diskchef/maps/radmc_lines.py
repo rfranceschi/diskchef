@@ -221,7 +221,7 @@ class RadMCRT(RadMCBase):
         header["RESTFREQ"] = restfreq
 
         cube = SpectralCube(
-            data=np.rot90(im.imageJyppix, axes=[0, 1]) << u.Jy,
+            data=np.rot90(im.image * 1e23, axes=[0, 1]) << (u.Jy / u.sr),
             wcs=WCS(wcs_dict), header=header
         )
 
