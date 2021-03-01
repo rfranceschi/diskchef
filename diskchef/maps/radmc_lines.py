@@ -206,11 +206,11 @@ class RadMCRT(RadMCBase):
 
         wcs_dict = {
             'CTYPE3': 'RA---CAR', 'CUNIT3': 'deg',
-            'CDELT3': -mean_x_width.value, 'CRPIX3': midx_i, 'CRVAL3': midx_val.value, 'NAXIS3': x_len,
+            'CDELT3': -mean_x_width.value, 'CRPIX3': midx_i + 1, 'CRVAL3': midx_val.value, 'NAXIS3': x_len,
             'CTYPE2': 'DEC--CAR', 'CUNIT2': 'deg',
-            'CDELT2': mean_y_width.value, 'CRPIX2': midy_i, 'CRVAL2': midy_val.value, 'NAXIS2': y_len,
+            'CDELT2': mean_y_width.value, 'CRPIX2': midy_i + 1, 'CRVAL2': midy_val.value, 'NAXIS2': y_len,
             'CTYPE1': 'FREQ    ', 'CUNIT1': 'Hz',
-            'CDELT1': mean_channel_width.value, 'CRPIX1': midfreq_i, 'CRVAL1': midfreq_hz.value, 'NAXIS1': freq_len,
+            'CDELT1': mean_channel_width.value, 'CRPIX1': midfreq_i + 1, 'CRVAL1': midfreq_hz.value, 'NAXIS1': freq_len,
 
         }
 
