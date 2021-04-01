@@ -37,6 +37,7 @@ class RadMCBase(MapBase):
     verbosity: int = 0
     wavelengths: u.Quantity = field(default=np.geomspace(0.1, 1000, 100) * u.um)
     modified_random_walk: bool = True
+    scattering_mode_max: int = None
     nphot_therm: int = None
 
     def __post_init__(self):
@@ -45,7 +46,7 @@ class RadMCBase(MapBase):
             raise CHEFNotImplementedError
 
         try:
-            os.mkdir(self.folder)
+            os.makedirs(self.folder)
         except FileExistsError:
             self.logger.warn("Directory %s already exists! The results can be biased.", self.folder)
 
@@ -134,6 +135,8 @@ class RadMCBase(MapBase):
             out_file = os.path.join(self.folder, 'radmc3d.inp')
 
         with open(out_file, 'w') as file:
+            if self.scattering_mode_max is not None:
+                print(f"scattering_mode_max = {self.scattering_mode_max}", file=file)
             if self.modified_random_walk:
                 print("modified_random_walk = 1", file=file)
             if self.nphot_therm is not None:
