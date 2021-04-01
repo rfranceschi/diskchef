@@ -34,8 +34,8 @@ dust.write_to_table()
 # (r2 ~ 0.95, good approximation except for density ~1e5 c,-3 and T~30K)
 # This is not used for dust transfer anyway
 
-# chem = SciKitChemistry(physics)
-chem = NonzeroChemistryWB2014(physics)
+chem = SciKitChemistry(physics)
+# chem = NonzeroChemistryWB2014(physics)
 folder = "example_lines_dust"
 radmc_dust = RadMCTherm(
     chemistry=chem,
