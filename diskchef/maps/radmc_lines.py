@@ -126,7 +126,6 @@ class RadMCRT(RadMCBase):
             inclination: u.deg = 0 * u.deg, position_angle: u.deg = 0 * u.deg,
             distance: u.pc = 140 * u.pc, velocity_offset: u.km / u.s = 0 * u.km / u.s,
             threads: int = 1, npix: int = 100,
-            coordinate: typing.Union[str, astropy.coordinates.SkyCoord] = None
     ) -> None:
         """Run RadMC3D after files were created with `create_files()`"""
         self.logger.info("Running radmc3d")
@@ -148,7 +147,6 @@ class RadMCRT(RadMCBase):
             self, molecule: int, line: int, inclination: float = 0, position_angle: float = 0,
             name: PathLike = None, distance: float = 140, velocity_offset: float = 0,
             n_channels: int = 100, threads: int = 1, lineobj: Line = None, npix: int = 100,
-            coordinate=None,
     ) -> None:
         start = time.time()
         command = (f"{self.executable} {self.mode} "
@@ -177,12 +175,11 @@ class RadMCRT(RadMCBase):
             newname = os.path.join(self.folder, name)
             shutil.move(os.path.join(self.folder, "image.out"), newname)
             output.file_radmc = newname
-            output.file_fits = self.radmc_to_fits(newname, self.line_list[line], distance * u.pc, coordinate=coordinate)
+            output.file_fits = self.radmc_to_fits(newname, self.line_list[line], distance * u.pc)
         self.outputs[lineobj] = output
 
     def radmc_to_fits(
             self, name: PathLike, line: Line, distance,
-            coordinate: typing.Union[str, astropy.coordinates.SkyCoord] = None
     ) -> PathLike:
         """Saves RadMC3D `image.out` files as FITS files
 
@@ -210,6 +207,8 @@ class RadMCRT(RadMCBase):
         midfreq_i = freq_len // 2
         midfreq_hz = freq_hz[midfreq_i]
         mean_channel_width = (freq_hz[1:] - freq_hz[:-1]).mean()
+
+        coordinate = self.coordinate
 
         if coordinate is not None:
             try:

@@ -1,3 +1,4 @@
+import os
 from dataclasses import dataclass
 
 from diskchef.engine.exceptions import CHEFNotImplementedError
@@ -35,21 +36,26 @@ class ChemistryBase:
         """Writes the output of the chemical model into self.table"""
         raise CHEFNotImplementedError
 
-    def plot_chemistry(self, table=None):
+    def plot_chemistry(self, table=None, folder="."):
         if table is None:
             table = self.table
         dvn = Divan()
         dvn.chemical_structure = table
-        dvn.generate_figure_chemistry(spec1="CO", spec2="CO", normalizer=colors.LogNorm())
+        dvn.generate_figure_chemistry(spec1="CO", spec2="CO", normalizer=colors.LogNorm(1e-10,1e-4))
+        dvn.save_figures_pdf(output_filename=os.path.join(folder, "chemistry.pdf"))
 
-    def plot_h2_coldens(self):
+    def plot_h2_coldens(self, folder="."):
         dvn = Divan()
         dvn.chemical_structure = self.table
-        dvn.generate_figure(
-            r=self.table.r, z=self.table.z,
-            data1=self.table["H2 column density towards star"],
-            normalizer=colors.LogNorm(1e10, 1e30)
-        )
+        try:
+            dvn.generate_figure(
+                r=self.table.r, z=self.table.z,
+                data1=self.table["H2 column density towards star"],
+                normalizer=colors.LogNorm(1e10, 1e30)
+            )
+            dvn.save_figures_pdf(output_filename=os.path.join(folder, "coldens.pdf"))
+        except KeyError:
+            self.logger.error("'H2 column density towards star' is not present is table")
 
     def update_hydrogen_atom_number_density(self):
         """Calculates the hydrogen atom density used to scale all other atoms to"""

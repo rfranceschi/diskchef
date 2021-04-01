@@ -8,6 +8,7 @@ import subprocess
 import numpy as np
 from astropy import constants as c
 from astropy import units as u
+from astropy.coordinates import SkyCoord
 from matplotlib import pyplot as plt
 from matplotlib.colors import Normalize
 import radmc3dPy
@@ -39,6 +40,7 @@ class RadMCBase(MapBase):
     modified_random_walk: bool = True
     scattering_mode_max: int = None
     nphot_therm: int = None
+    coordinate: Union[str, SkyCoord] = None
 
     def __post_init__(self):
         super().__post_init__()
