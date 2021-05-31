@@ -25,7 +25,8 @@ class WilliamsBest2014(ParametrizedPhysics):
                      gas_mass=<Quantity 0.001 solMass>, tapering_radius=<Quantity 100. AU>,
                      tapering_gamma=0.75, midplane_temperature_1au=<Quantity 200. K>,
                      atmosphere_temperature_1au=<Quantity 1000. K>, temperature_slope=0.55,
-                     mean_molecular_mass=<Quantity 2.33 g / mol>, inner_radius=<Quantity 1. AU>)
+                     mean_molecular_mass=<Quantity 2.33 g / mol>, inner_radius=<Quantity 1. AU>,
+                     inner_depletion=1e-06)
     >>> # Defaults can be overridden
     >>> WilliamsBest2014(star_mass=2 * u.solMass, r_max=200 * u.au)  # doctest: +NORMALIZE_WHITESPACE
     WilliamsBest2014(star_mass=<Quantity 2. solMass>, r_min=<Quantity 0.1 AU>, r_max=<Quantity 200. AU>,
@@ -33,7 +34,8 @@ class WilliamsBest2014(ParametrizedPhysics):
                      gas_mass=<Quantity 0.001 solMass>, tapering_radius=<Quantity 100. AU>,
                      tapering_gamma=0.75, midplane_temperature_1au=<Quantity 200. K>,
                      atmosphere_temperature_1au=<Quantity 1000. K>, temperature_slope=0.55,
-                     mean_molecular_mass=<Quantity 2.33 g / mol>, inner_radius=<Quantity 1. AU>)
+                     mean_molecular_mass=<Quantity 2.33 g / mol>, inner_radius=<Quantity 1. AU>,
+                     inner_depletion=1e-06)
     >>> # Generate physics on 3x3 grid
     >>> physics_small_grid = WilliamsBest2014(vertical_bins=3, radial_bins=3)
     >>> # table attribute stores the table with the model. Called first time, calculates the table
@@ -43,15 +45,15 @@ class WilliamsBest2014(ParametrizedPhysics):
        Radius       Height    Height to radius Gas density  Dust density Gas temperature Dust temperature
          AU           AU                         g / cm3      g / cm3           K               K
     ------------ ------------ ---------------- ------------ ------------ --------------- ----------------
-    1.000000e-01 0.000000e+00     0.000000e+00 1.153290e-06 1.153290e-08    7.096268e+02     7.096268e+02
-    1.000000e-01 3.500000e-02     3.500000e-01 5.024587e-25 5.024587e-27    3.548134e+03     3.548134e+03
-    1.000000e-01 7.000000e-02     7.000000e-01 5.921268e-63 5.921268e-65    3.548134e+03     3.548134e+03
-    7.071068e+00 0.000000e+00     0.000000e+00 2.285168e-10 2.285168e-12    6.820453e+01     6.820453e+01
-    7.071068e+00 2.474874e+00     3.500000e-01 2.716386e-14 2.716386e-16    3.410227e+02     3.410227e+02
-    7.071068e+00 4.949747e+00     7.000000e-01 7.189026e-20 7.189026e-22    3.410227e+02     3.410227e+02
-    5.000000e+02 0.000000e+00     0.000000e+00 2.871710e-17 2.871710e-19    6.555359e+00     6.555359e+00
-    5.000000e+02 1.750000e+02     3.500000e-01 6.929036e-19 6.929036e-21    2.625083e+01     2.625083e+01
-    5.000000e+02 3.500000e+02     7.000000e-01 8.170464e-20 8.170464e-22    3.277680e+01     3.277680e+01
+    1.000000e-01 0.000000e+00     0.000000e+00 1.153290e-15 1.153290e-17    7.096268e+02     7.096268e+02
+    1.000000e-01 3.500000e-02     3.500000e-01 5.024587e-34 5.024587e-36    3.548134e+03     3.548134e+03
+    1.000000e-01 7.000000e-02     7.000000e-01 5.921268e-72 5.921268e-74    3.548134e+03     3.548134e+03
+    7.071068e+00 0.000000e+00     0.000000e+00 2.285168e-13 2.285168e-15    6.820453e+01     6.820453e+01
+    7.071068e+00 2.474874e+00     3.500000e-01 2.716386e-17 2.716386e-19    3.410227e+02     3.410227e+02
+    7.071068e+00 4.949747e+00     7.000000e-01 7.189026e-23 7.189026e-25    3.410227e+02     3.410227e+02
+    5.000000e+02 0.000000e+00     0.000000e+00 2.871710e-20 2.871710e-22    6.555359e+00     6.555359e+00
+    5.000000e+02 1.750000e+02     3.500000e-01 6.929036e-22 6.929036e-24    2.625083e+01     2.625083e+01
+    5.000000e+02 3.500000e+02     7.000000e-01 8.170464e-23 8.170464e-25    3.277680e+01     3.277680e+01
     >>> physics_wrong_unit = WilliamsBest2014(star_mass=2)  # Does NOT raise an exception
     >>> physics_wrong_unit.table  # but will cause unit conversion errors later
     Traceback (most recent call last):
@@ -66,6 +68,7 @@ class WilliamsBest2014(ParametrizedPhysics):
     temperature_slope: float = 0.55
     mean_molecular_mass: u.kg / u.mol = 2.33 * u.g / u.mol
     inner_radius: u.au = 1 * u.au
+    inner_depletion: float = 1e-6
 
     @u.quantity_input
     def gas_temperature(self, r: u.au, z: u.au) -> u.K:
@@ -166,10 +169,11 @@ class WilliamsBest2014(ParametrizedPhysics):
 
     @cached_property
     def column_density_1au(self) -> u.g / u.cm ** 2:
-        return (2 - self.tapering_gamma) * self.star_mass / (2 * np.pi * self.tapering_radius ** 2) \
+        return (2 - self.tapering_gamma) * self.gas_mass / (2 * np.pi * self.tapering_radius ** 2) \
                * np.exp((self.inner_radius / self.tapering_radius) ** (2 - self.tapering_gamma))
 
     @u.quantity_input
     def column_density(self, r: u.au) -> u.g / u.cm ** 2:
-        return self.column_density_1au * (r / self.tapering_radius) ** (-self.tapering_gamma) \
+        drop = np.where(r < self.inner_radius, self.inner_depletion, 1)
+        return drop * self.column_density_1au * (r / self.tapering_radius) ** (-self.tapering_gamma) \
                * np.exp(-(r / self.tapering_radius) ** (2 - self.tapering_gamma))

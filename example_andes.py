@@ -2,6 +2,7 @@ import logging
 import shutil
 from pathlib import Path
 from astropy import units as u
+
 from matplotlib import pyplot as plt
 import spectral_cube
 from astropy.visualization import quantity_support
@@ -12,7 +13,7 @@ from scipy.integrate import trapz
 
 from diskchef.chemistry.andes import ReadAndesData
 from diskchef.lamda.line import Line
-from diskchef.maps.radmcrt import RadMCRTSingleCall
+from diskchef.maps import RadMCRTSingleCall
 
 shutil.rmtree('radmc', ignore_errors=True)
 
@@ -35,12 +36,12 @@ for fileindex in [5, 15, 30]:
     map = RadMCRTSingleCall(
         folder=folder,
         chemistry=chem, line_list=[
-            #    Line(name='CO J=2-1', transition=1, molecule='CO'),
-            # Line(name='HCO+ J=3-2', transition=2, molecule='HCO+'),
+            #    Line(name='CO J=2-1', transition=2, molecule='CO'),
+            # Line(name='HCO+ J=3-2', transition=3, molecule='HCO+'),
             Line(name='H2CO 3_03-2_02', transition=3, molecule='pH2CO'),
-            #    Line(name='CO J=3-2', transition=2, molecule='CO'),
-            #    Line(name='13CO J=3-2', transition=2, molecule='13CO'),
-            #    Line(name='C18O J=3-2', transition=2, molecule='C18O'),
+            #    Line(name='CO J=3-2', transition=3, molecule='CO'),
+            #    Line(name='13CO J=3-2', transition=3, molecule='13CO'),
+            #    Line(name='C18O J=3-2', transition=3, molecule='C18O'),
         ], outer_radius=200 * u.au, radii_bins=100, theta_bins=100)
     map.create_files(channels_per_line=200, window_width=8 * u.km / u.s)
     map.run(

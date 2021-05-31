@@ -1,3 +1,4 @@
+import os
 from dataclasses import dataclass
 from functools import cached_property
 import logging
@@ -35,6 +36,19 @@ class PhysicsBase:
     def table(self, value: CTable):
         self._table = value
 
+    def plot_column_density(self, axes=None, table=None):
+        raise CHEFNotImplementedError
+
+    def plot_density(self, axes: matplotlib.axes.Axes = None, table: CTable = None, folder="."):
+        if table is None:
+            table = self.table
+        # if axes is None:
+        #     fig, axes = plt.subplots()
+        dvn = Divan()
+        dvn.physical_structure = table
+        dvn.generate_figure_volume_densities(extra_gas_to_dust=100)
+        dvn.generate_figure_temperatures()
+        dvn.save_figures_pdf(output_filename=os.path.join(folder, "physics.pdf"))
 
 @dataclass
 class PhysicsModel(PhysicsBase):
@@ -168,15 +182,4 @@ class PhysicsModel(PhysicsBase):
 
         return u.Quantity(integrals)
 
-    def plot_column_density(self, axes=None, table=None):
-        raise CHEFNotImplementedError
 
-    def plot_density(self, axes: matplotlib.axes.Axes = None, table: CTable = None):
-        if table is None:
-            table = self.table
-        # if axes is None:
-        #     fig, axes = plt.subplots()
-        dvn = Divan()
-        dvn.physical_structure = table
-        dvn.generate_figure_volume_densities(extra_gas_to_dust=100)
-        dvn.generate_figure_temperatures()

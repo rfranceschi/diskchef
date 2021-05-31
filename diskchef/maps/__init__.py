@@ -19,5 +19,6 @@ Important:
 
 `diskchef.lamda.lamda_files` -- function to get absolute path to LAMDA files by species name
 """
-from diskchef.maps import radmcrt
-from diskchef.maps.radmcrt import RadMCRTSingleCall, RadMCRT, RadMCVisualize
+from diskchef.maps.radmcrt import RadMCVisualize
+from diskchef.maps.radmc_lines import RadMCRT, RadMCRTSingleCall
+from diskchef.maps.radmc_dust import RadMCTherm

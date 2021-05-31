@@ -1,9 +1,12 @@
 import logging
 from astropy import units as u
 
+from matplotlib import pyplot as plt
+
+from divan import Divan
+
 from diskchef.chemistry.scikit import SciKitChemistry
-from diskchef.lamda.line import Line
-from diskchef.maps.radmcrt import RadMCTherm
+from diskchef.maps import RadMCTherm
 from diskchef.physics.williams_best import WilliamsBest2014
 from diskchef.physics.multidust import DustPopulation
 from diskchef.dust_opacity.dust_files import dust_files
@@ -25,11 +28,9 @@ dust.write_to_table()
 # This uses experimental chemistry based on KNearestNeighbors machine learning on ANDES2 model grid
 # with temperature and density are the only parameters
 # (r2 ~ 0.95, good approximation except for density ~1e5 c,-3 and T~30K)
-chem = SciKitChemistry(physics)
-chem.run_chemistry()
-chem.table['13CO'] = chem.table['CO'] / 70
-chem.table['C18O'] = chem.table['CO'] / 550
 # This is not used for dust transfer anyway
+
+chem = SciKitChemistry(physics)
 
 map = RadMCTherm(
     chemistry=chem,
@@ -37,8 +38,23 @@ map = RadMCTherm(
 )
 map.create_files()
 map.run(threads=8)
+map.read_dust_temperature()
 
-# import pickle
-#
-# with open("pkl.plk", "wb") as fff:
-#     pickle.dump(map.polar_table, fff)
+print(chem.table[0:5])
+
+chem.run_chemistry()
+chem.table['13CO'] = chem.table['CO'] / 77
+chem.table['C18O'] = chem.table['CO'] / 560
+
+chem.physics.plot_density()
+
+dvn = Divan()
+dvn.physical_structure = chem.table
+dvn.generate_figure_volume_densities(extra_gas_to_dust=100)
+dvn.generate_figure_temperatures()
+dvn.generate_figure_temperatures(
+    r=map.polar_table.r, z=map.polar_table.z,
+    gas_temperature=map.polar_table["RadMC Dust temperature"],
+    dust_temperature=map.polar_table["Dust temperature"]
+)
+dvn.save_figures_pdf("example_dust/figs.pdf")
