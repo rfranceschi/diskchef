@@ -47,6 +47,7 @@ class RadMCBase(MapBase):
         if not self.table.is_in_zr_regular_grid:
             raise CHEFNotImplementedError
 
+        #TODO change to Path.mkdir(parents=True, exists_ok=False)
         try:
             os.makedirs(self.folder)
         except FileExistsError:
