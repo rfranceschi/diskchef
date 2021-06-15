@@ -225,7 +225,7 @@ class Model:
             spectrum = (scube * pixel_area).to(u.mJy).sum(axis=(1, 2))  # 1d spectrum in Jy
             flux = np.trapz(scube.spectral_axis, spectrum)
             tbl = astropy.table.QTable(
-                [scube.spectral_axis, spectrum],
+                [scube.spectral_axis, u.Quantity(spectrum)],
                 meta={"flux": flux},
                 names=["Velocity", "Flux density"],
             )
