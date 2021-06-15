@@ -83,6 +83,7 @@ class BaseModel:
     def run_simulation(self):
         pass
 
+
 @dataclass
 class Model:
     """Class to run a simulation"""
@@ -181,25 +182,27 @@ class Model:
                 560 * 5)  # http://articles.adsabs.harvard.edu/pdf/1994ARA%26A..32..191W
         self.disk_chemical_model.table['13C18O'] = self.disk_chemical_model.table['CO'] / (77 * 560)
 
-    def plot(self):
+    def plot(self, **kwargs):
         """Plot physical and chemical structure using `divan`"""
         dvn = Divan(matplotlib_style='divan.mplstyle')
         dvn.physical_structure = self.disk_chemical_model.table
         dvn.chemical_structure = self.disk_chemical_model.table
-        dvn.generate_figure_volume_densities(extra_gas_to_dust=100)
-        dvn.generate_figure_temperatures()  # gas_temperature=disk_chemical_model.table["Original Dust temperature"])
+        dvn.generate_figure_volume_densities(extra_gas_to_dust=100, **kwargs)
+        dvn.generate_figure_temperatures(
+            **kwargs)  # gas_temperature=disk_chemical_model.table["Original Dust temperature"])
         dvn.generate_figure(
             data1='Original Dust temperature',
             data2='RadMC Dust temperature',
             r=self.disk_chemical_model.table.r,
-            z=self.disk_chemical_model.table.z
+            z=self.disk_chemical_model.table.z,
+            **kwargs
         )
-        self.disk_chemical_model.physics.plot_density()
-        self.disk_chemical_model.plot_chemistry()
-        dvn.generate_figure_chemistry(spec1="CO", normalizer=colors.LogNorm())
-        dvn.generate_figure_chemistry(spec1="HCO+", normalizer=colors.LogNorm())
-        dvn.generate_figure_chemistry(spec1="N2H+", normalizer=colors.LogNorm())
-        dvn.generate_figure_chemistry(spec1="HCN", normalizer=colors.LogNorm())
+        self.disk_chemical_model.physics.plot_density(**kwargs)
+        self.disk_chemical_model.plot_chemistry(**kwargs)
+        dvn.generate_figure_chemistry(spec1="CO", normalizer=colors.LogNorm(), **kwargs)
+        dvn.generate_figure_chemistry(spec1="HCO+", normalizer=colors.LogNorm(), **kwargs)
+        dvn.generate_figure_chemistry(spec1="N2H+", normalizer=colors.LogNorm(), **kwargs)
+        dvn.generate_figure_chemistry(spec1="HCN", normalizer=colors.LogNorm(), **kwargs)
         dvn_figure = self.folder / "figs.pdf"
         dvn.save_figures_pdf(dvn_figure)
 

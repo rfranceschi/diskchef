@@ -84,21 +84,22 @@ class Residual:
         data = self.data
         distance = self.distance
 
-        self.chi_per_channel = [
-            g_double.chi2Image(
+        self.chi_per_channel = []
+        for channel, wavelength, re, im, weight in zip(
+                range(len(data.wavelengths)), data.wavelengths, data.re.T, data.im.T, data.weight.T
+        ):
+            chi_per_channel = g_double.chi2Image(
                 image=model.imageJyppix[:, :, channel],
                 # TODO refactor this to construct the cube at same frequencies as data
-                dxy=(model.sizepix_x * u.cm / distance).to(u.dimensionless_unscaled).value,
-                u=(data.u / wavelength).to(u.dimensionless_unscaled).value,
-                v=(data.v / wavelength).to(u.dimensionless_unscaled).value,
-                vis_obs_re=re.astype('float64').to(u.Jy).value,
-                vis_obs_im=im.astype('float64').to(u.Jy).value,
-                vis_obs_w=weight.astype('float64').to(u.Jy ** -2).value,
+                dxy=(model.sizepix_x * u.cm / distance).to_value(u.dimensionless_unscaled),
+                u=(data.u / wavelength).to_value(u.dimensionless_unscaled),
+                v=(data.v / wavelength).to_value(u.dimensionless_unscaled),
+                vis_obs_re=re.astype('float64').to_value(u.Jy),
+                vis_obs_im=im.astype('float64').to_value(u.Jy),
+                vis_obs_w=weight.astype('float64').to_value(u.Jy ** -2),
             )
-            for channel, wavelength, re, im, weight in zip(
-                range(len(data.wavelengths)), data.wavelengths, data.re.T, data.im.T, data.weight.T
-            )
-        ]
+            self.chi_per_channel.append(chi_per_channel)
+
         return sum(self.chi_per_channel)
 
     def interpolate_model_to_data_grid(self):

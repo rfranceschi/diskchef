@@ -28,7 +28,7 @@ from divan import Divan
 from functools import cached_property
 from matplotlib import colors
 from pathlib import Path
-from .model import ProposalModel
+from diskchef.model.model import Model
 
 lines = [
     Line(name='HCN J=3-2', transition=3, molecule='HCN'),
@@ -59,7 +59,7 @@ from diskchef.physics.yorke_bodenheimer import YorkeBodenheimer2008
 
 yb = YorkeBodenheimer2008()
 
-demo_model = ProposalModel(
+demo_model = Model(
     disk="Default",
     line_list=lines,
     params=dict(r_min=1 * u.au, r_max=300 * u.au, radial_bins=100, vertical_bins=100),
@@ -68,6 +68,6 @@ demo_model = ProposalModel(
     inc=30 * u.deg,
     PA=25 * u.deg,
     distance=150 * u.pc,
-    npix=100,
-    channels=101,
+    npix=120,
+    channels=21,
 )

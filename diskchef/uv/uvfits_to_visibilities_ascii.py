@@ -1,8 +1,9 @@
 """Module with functions to convert GILDAS UVTable to GALARIO visibilities format"""
-import numpy as np
 import os
 from typing import Union, Literal, Sequence
+import logging
 
+import numpy as np
 from astropy import constants as c
 from astropy import units as u
 from astropy.table import Table, QTable
@@ -74,6 +75,10 @@ class UVFits:
     """
 
     def __init__(self, path: PathLike, channel: Union[int, Sequence, slice, Literal['all']] = 'all', sum: bool = True):
+        self.logger = logging.getLogger(__name__ + '.' + self.__class__.__qualname__)
+        self.logger.info("Creating an instance of %s", self.__class__.__qualname__)
+        self.logger.debug("With parameters: %s", self.__dict__)
+
         self.path = os.path.abspath(path)
         self._fits = Table.read(path, hdu=0, memmap=False)
         self.table = QTable()
@@ -141,7 +146,6 @@ class UVFits:
             self.frequencies = frequencies
         self._update_fits(data, frequencies)
 
-
     @property
     def wavelengths(self):
         return c.c / self.frequencies
@@ -162,7 +166,8 @@ class UVFits:
     def image_to_visibilities(self, file: PathLike):
         """Import cube from a FITS `file`, sample it with visibilities of this UVFITS"""
         cube = spectral_cube.SpectralCube.read(file)
-        pixel_area_units = u.Unit(cube.wcs.celestial.world_axis_units[0]) * u.Unit(cube.wcs.celestial.world_axis_units[1])
+        pixel_area_units = u.Unit(cube.wcs.celestial.world_axis_units[0]) * u.Unit(
+            cube.wcs.celestial.world_axis_units[1])
         pixel_area = astropy.wcs.utils.proj_plane_pixel_area(cube.wcs.celestial) * pixel_area_units
         dxy = np.sqrt(pixel_area).to_value(u.rad)
         cube = (cube * pixel_area).to(u.Jy)
@@ -183,8 +188,60 @@ class UVFits:
         )
         self.set_data(uvdata_arr, cube.spectral_axis)
 
-    def chi2_with(self):
-        pass
+    @property
+    def visibility(self):
+        return self.re + self.im * 1j
 
+    def chi2_with(self, data=Union[PathLike, spectral_cube.SpectralCube], check=False):
+        """Method to calculate chi-squared of a given UV set with a data cube
 
+        Args:
+            data: PathLike -- path to data cube readable by SpectralCube.read OR the spectral cube itself
+        """
+        # print("Vis before: ", self.visibility)
+        if not isinstance(data, spectral_cube.SpectralCube):
+            data = spectral_cube.SpectralCube.read(data)
 
+        self.logger.debug("Data spectral axis: %s", data.spectral_axis.to(self.frequencies.unit))
+        self.logger.debug("UVTable spectral axis: %s", self.frequencies)
+        if not np.all(np.equal(data.spectral_axis, self.frequencies)):
+            data = data.spectral_interpolate(spectral_grid=self.frequencies)
+            self.logger.info("Interpolate data to UVTable spectral grid")
+
+        pixel_area_units = u.Unit(data.wcs.celestial.world_axis_units[0]) \
+                           * u.Unit(data.wcs.celestial.world_axis_units[1])
+        pixel_area = astropy.wcs.utils.proj_plane_pixel_area(data.wcs.celestial) * pixel_area_units
+        dxy = np.sqrt(pixel_area).to_value(u.rad)
+        self.logger.debug("Data pixel area %s and size %s radian", pixel_area, dxy)
+        data = (data * pixel_area).to(u.Jy)
+        self.chi_per_channel = []
+        for cube_slice, _wavelength, _re, _im, _weight in zip(
+                data, self.wavelengths, self.re.T, self.im.T, self.weight.T
+        ):
+            # print(g_double.sampleImage(cube_slice, dxy,
+            #                            (self.u / _wavelength),
+            #                            (self.v / _wavelength)))
+            # print(_re + _im * 1j)
+            chi_per_channel = g_double.chi2Image(
+                image=cube_slice,
+                dxy=dxy,
+                u=(self.u / _wavelength).to_value(u.dimensionless_unscaled),
+                v=(self.v / _wavelength).to_value(u.dimensionless_unscaled),
+                vis_obs_re=_re.astype('float64').to_value(u.Jy),
+                vis_obs_im=_im.astype('float64').to_value(u.Jy),
+                vis_obs_w=_weight.astype('float64').to_value(u.Jy ** -2),
+                check=check
+            )
+            # print(chi_per_channel)
+            # print("{u}\n{v}\n{vis_obs_re}\n{vis_obs_im}\n{vis_obs_w}\n{image}\n{dxy}\n\n\n".format(
+            #     image=cube_slice.shape,
+            #     dxy=dxy,
+            #     u=(self.u / _wavelength).to_value(u.dimensionless_unscaled),
+            #     v=(self.v / _wavelength).to_value(u.dimensionless_unscaled),
+            #     vis_obs_re=_re.astype('float64').to_value(u.Jy),
+            #     vis_obs_im=_im.astype('float64').to_value(u.Jy),
+            #     vis_obs_w=_weight.astype('float64').to_value(u.Jy ** -2)
+            # ))
+            self.chi_per_channel.append(chi_per_channel)
+        # print("Vis after: ", self.visibility)
+        return np.sum(self.chi_per_channel)
