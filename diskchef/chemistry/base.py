@@ -1,17 +1,17 @@
-import os
 from dataclasses import dataclass
-
-from diskchef.engine.exceptions import CHEFNotImplementedError
 import logging
+from typing import Union
 
 from astropy import units as u, constants as const
 from matplotlib import colors
-from divan import Divan
+import matplotlib.axes
 
+import diskchef
+from diskchef.engine.exceptions import CHEFNotImplementedError
 from diskchef.chemistry.abundances import Abundances
 from diskchef.physics.base import PhysicsBase
 from diskchef.physics.williams_best import WilliamsBest2014
-
+from diskchef.engine.plot import Plot2D
 
 @dataclass
 class ChemistryBase:
@@ -36,31 +36,24 @@ class ChemistryBase:
         """Writes the output of the chemical model into self.table"""
         raise CHEFNotImplementedError
 
-    def plot_chemistry(self, table=None, folder="."):
-        if table is None:
-            table = self.table
-        dvn = Divan()
-        dvn.chemical_structure = table
-        dvn.generate_figure_chemistry(spec1="CO", spec2="CO", normalizer=colors.LogNorm(1e-10,1e-4))
-        dvn.save_figures_pdf(output_filename=os.path.join(folder, "chemistry.pdf"))
-
-    def plot_h2_coldens(self, folder="."):
-        dvn = Divan()
-        dvn.chemical_structure = self.table
-        try:
-            dvn.generate_figure(
-                r=self.table.r, z=self.table.z,
-                data1=self.table["H2 column density towards star"],
-                normalizer=colors.LogNorm(1e10, 1e30)
-            )
-            dvn.save_figures_pdf(output_filename=os.path.join(folder, "coldens.pdf"))
-        except KeyError:
-            self.logger.error("'H2 column density towards star' is not present is table")
-
     def update_hydrogen_atom_number_density(self):
         """Calculates the hydrogen atom density used to scale all other atoms to"""
         self.table["n(H+2H2)"] = self.table["Gas density"] / self.mean_molecular_mass * const.N_A
 
+    def plot_chemistry(
+            self,
+            species1, species2=None,
+            axes: matplotlib.axes.Axes = None,
+            table: diskchef.CTable = None, folder=".",
+            cmap: Union[matplotlib.colors.Colormap, str] = 'YlGnBu',
+            **kwargs
+    ):
+        if table is None:
+            table = self.table
+        Plot2D(table, axes=axes, data1=species1, data2=species2, cmap=cmap, **kwargs)
+
+    def plot_absolute_chemistry(self, *args, cmap="RdPu", **kwargs):
+        self.plot_chemistry(*args, multiply_by="n(H+2H2)", cmap=cmap, **kwargs)
 
 @dataclass
 class ChemistryModel(ChemistryBase):

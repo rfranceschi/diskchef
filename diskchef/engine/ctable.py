@@ -8,14 +8,8 @@ import numpy as np
 from astropy import units as u
 from astropy.table import QTable
 from scipy.interpolate import griddata
-from named_constants import Constants
 
 from diskchef.engine.exceptions import CHEFNotImplementedError, CHEFRuntimeError
-
-
-class TableColumns(Constants):
-    radius = 'Radius'
-    height = 'Height'
 
 
 class CTable(QTable):

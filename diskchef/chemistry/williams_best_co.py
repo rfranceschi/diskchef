@@ -65,7 +65,7 @@ class ChemistryWB2014(ChemistryModel):
     def run_chemistry(self):
         self.table["H2"] = 0.5
         self.calculate_column_density_towards_star("H2")
-        self.calculate_column_density_upwards("H2")
+        # self.calculate_column_density_upwards("H2")  # TODO to be optimized!
 
         self.table["CO"] = self.midplane_co_abundance
         self.table["CO"][
