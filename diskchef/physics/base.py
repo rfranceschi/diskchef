@@ -69,8 +69,8 @@ class PhysicsModel(PhysicsBase):
         """Calculates gas density at given r, z"""
         raise CHEFNotImplementedError
 
-    @u.quantity_input(r=u.au, z=u.au)
-    def dust_temperature(self, r, z) -> u.K:
+    @u.quantity_input
+    def dust_temperature(self, r: u.au, z: u.au) -> u.K:
         """Calculates dust temperature at given r, z"""
         raise CHEFNotImplementedError
 

@@ -41,8 +41,9 @@ class BaseModel:
       Usage:
       >>> model = BaseModel(
       ...   name="DQ Tau", folder="DQ Tau model", run=True,
-      ...   physics_class=WilliamsBest2014, params_physics={"star_mass": 1*u.solMass}
+      ...   physics_class=WilliamsBest2014, params_physics={"star_mass": 1*u.solMass},
       ... )
+      # >>> model.chi2_with(somefile)
     """
     name: str = "default"
     folder: PathLike = None
