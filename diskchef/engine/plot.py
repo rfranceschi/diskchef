@@ -1,10 +1,12 @@
 """Module with plotting helper routines for diskchef"""
+import copy
+
 import logging
 from dataclasses import dataclass
 
 import matplotlib.ticker
 import numpy as np
-from typing import Literal, Union
+from typing import Literal, Union, List
 
 from astropy import units as u
 from astropy.visualization import quantity_support
@@ -19,6 +21,7 @@ from diskchef import CTable
 from diskchef.engine.other import LogNormMaxOrders
 
 from chemical_names import from_string
+
 
 @dataclass
 class Plot2D:
@@ -38,6 +41,7 @@ class Plot2D:
     unit_format: Literal["latex", "cds", None] = "latex"
     cmap: Union[matplotlib.colors.Colormap, str] = None
     multiply_by: Union[str, float] = 1.
+    maxdepth: float = 1e6
 
     def __post_init__(self):
         self.logger = logging.getLogger(__name__ + '.' + self.__class__.__qualname__)
@@ -47,7 +51,7 @@ class Plot2D:
         if self.axes is None:
             self.axes = plt.axes()
         if self.norm is None:
-            self.norm = LogNormMaxOrders()
+            self.norm = LogNormMaxOrders(maxdepth=self.maxdepth)
 
         try:
             self.multiply_by = self.table[self.multiply_by]
@@ -56,19 +60,19 @@ class Plot2D:
 
         data1_q = u.Quantity(self.table[self.data1] * self.multiply_by)
         data1 = data1_q.value
-        dataunit = data1_q.unit
+        self.data_unit = data1_q.unit
         self.norm(data1)
         x_axis = self.table[self.x_axis].value
-        x_unit = self.table[self.x_axis].unit
+        self.x_unit = self.table[self.x_axis].unit
         y_axis = self.table[self.y_axis].value
-        y_unit = self.table[self.y_axis].unit
+        self.y_unit = self.table[self.y_axis].unit
 
         levels = np.logspace(np.round(np.log10(self.norm.vmin)), np.round(np.log10(self.norm.vmax)), 10)
 
         self.axes.set_xscale(self.xscale)
         self.axes.set_yscale(self.yscale)
-        self.axes.set_xlabel(f"{self.x_axis} {self.formatted(x_unit)}")
-        self.axes.set_ylabel(f"{self.y_axis} {self.formatted(y_unit)}")
+        self.axes.set_xlabel(f"{self.x_axis} {self.formatted(self.x_unit)}")
+        self.axes.set_ylabel(f"{self.y_axis} {self.formatted(self.y_unit)}")
         im = self.axes.tricontourf(
             x_axis, y_axis,
             data1,
@@ -78,7 +82,7 @@ class Plot2D:
             cmap=self.cmap,
         )
         if self.data2 is not None:
-            data2 = u.Quantity(self.table[self.data2] * self.multiply_by).to_value(dataunit)
+            data2 = u.Quantity(self.table[self.data2] * self.multiply_by).to_value(self.data_unit)
             self.axes.tricontourf(
                 x_axis, -y_axis,
                 data2,
@@ -97,10 +101,11 @@ class Plot2D:
         self.axes.margins(self.margins)
         if self.colorbar:
             im.set_clim(self.norm.vmin, self.norm.vmax)
-            cbar = self.axes.figure.colorbar(
+            self.cbar = self.axes.figure.colorbar(
                 im, ax=self.axes, extend="both",
             )
-            cbar.set_label(self.formatted(data1_q.unit), rotation="horizontal")
+            self.cbar.set_label(self.formatted(data1_q.unit), rotation="horizontal")
+            self.cbar.ax.minorticks_off()
         if self.labels:
             txt = self.axes.text(
                 0.05, 0.05, from_string(self.data2),
@@ -129,3 +134,47 @@ class Plot2D:
             return "[--]"
         else:
             return fr"[{unit.to_string(self.unit_format)}]"
+
+    def contours(
+            self,
+            data: str,
+            levels: Union[u.Quantity, List[float]],
+            x_axis: str = "Radius",
+            y_axis: str = "Height to radius",
+            clabel_kwargs: dict = None,
+            colors: Union[str, List[str]] = "black",
+            on_colorbar: bool = True,
+            location: Literal["upper", "bottom", "both"] = "both",
+            **kwargs
+    ):
+        if clabel_kwargs is None:
+            clabel_kwargs = {}
+        data_q = u.Quantity(self.table[data])
+        data = data_q.value
+        dataunit = data_q.unit
+        if "fmt" not in clabel_kwargs.keys():
+            clabel_kwargs["fmt"] = f"%d {dataunit.to_string(self.unit_format)}"
+        x_axis = self.table[x_axis].to_value(self.x_unit)
+        y_axis = self.table[y_axis].to_value(self.y_unit)
+        if location == "both":
+            x_axis = [*x_axis, *x_axis]
+            y_axis = [*-y_axis, *y_axis]
+            data = [*data, *data]
+        elif location == "bottom":
+            y_axis = -y_axis
+        conts = self.axes.tricontour(
+            x_axis, y_axis,
+            data,
+            levels=levels.to_value(dataunit),
+            colors=colors,
+            **kwargs
+        )
+        if on_colorbar:
+            try:
+                levels_as_data = levels.to_value(self.data_unit)
+                new_conts = copy.copy(conts)
+                new_conts.levels = levels_as_data
+                self.cbar.add_lines(new_conts)
+            except u.core.UnitConversionError as e:
+                self.logger.info(e)
+        conts.clabel(levels.to_value(dataunit), use_clabeltext=True, inline=True, inline_spacing=1, **clabel_kwargs)

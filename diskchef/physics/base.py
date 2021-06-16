@@ -46,10 +46,10 @@ class PhysicsBase:
             table: CTable = None, folder=".",
             cmap: Union[matplotlib.colors.Colormap, str] = 'PuBuGn',
             **kwargs
-    ):
+    ) -> Plot2D:
         if table is None:
             table = self.table
-        Plot2D(table, axes=axes, data1="Gas density", data2="Dust density", cmap=cmap, **kwargs)
+        return Plot2D(table, axes=axes, data1="Gas density", data2="Dust density", cmap=cmap, **kwargs)
 
     def plot_temperatures(
             self,
@@ -57,10 +57,10 @@ class PhysicsBase:
             table: CTable = None, folder=".",
             cmap: Union[matplotlib.colors.Colormap, str] = 'afmhot',
             **kwargs
-    ):
+    ) -> Plot2D:
         if table is None:
             table = self.table
-        Plot2D(table, axes=axes, data1="Gas temperature", data2="Dust temperature", cmap=cmap, **kwargs)
+        return Plot2D(table, axes=axes, data1="Gas temperature", data2="Dust temperature", cmap=cmap, **kwargs)
 
 
 @dataclass

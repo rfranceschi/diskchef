@@ -13,6 +13,7 @@ from diskchef.physics.base import PhysicsBase
 from diskchef.physics.williams_best import WilliamsBest2014
 from diskchef.engine.plot import Plot2D
 
+
 @dataclass
 class ChemistryBase:
     physics: PhysicsBase = None
@@ -47,13 +48,14 @@ class ChemistryBase:
             table: diskchef.CTable = None, folder=".",
             cmap: Union[matplotlib.colors.Colormap, str] = 'YlGnBu',
             **kwargs
-    ):
+    ) -> Plot2D:
         if table is None:
             table = self.table
-        Plot2D(table, axes=axes, data1=species1, data2=species2, cmap=cmap, **kwargs)
+        return Plot2D(table, axes=axes, data1=species1, data2=species2, cmap=cmap, **kwargs)
 
-    def plot_absolute_chemistry(self, *args, cmap="RdPu", **kwargs):
-        self.plot_chemistry(*args, multiply_by="n(H+2H2)", cmap=cmap, **kwargs)
+    def plot_absolute_chemistry(self, *args, cmap="RdPu", **kwargs) -> Plot2D:
+        return self.plot_chemistry(*args, multiply_by="n(H+2H2)", cmap=cmap, **kwargs)
+
 
 @dataclass
 class ChemistryModel(ChemistryBase):
