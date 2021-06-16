@@ -21,15 +21,15 @@ chem.run_chemistry()
 
 logging.getLogger('matplotlib.font_manager').disabled = True
 
-fig, ax = plt.subplots(2, 2, sharex=True, sharey=True)
+fig, ax = plt.subplots(2, 3, sharex=True, sharey=True)
 physics.plot_density(axes=ax[0, 0])
 physics.plot_temperatures(axes=ax[1, 0])
 
-# chem.plot_chemistry("CO", "HCO+", axes=ax[0, 1])
-# chem.plot_chemistry("CN", "HCN", axes=ax[1, 1])
+chem.plot_chemistry("CO", "HCO+", axes=ax[0, 1])
+chem.plot_chemistry("CN", "HCN", axes=ax[1, 1])
 
-chem.plot_absolute_chemistry("CO", "HCO+", axes=ax[0, 1])
-chem.plot_absolute_chemistry("CN", "HCN", axes=ax[1, 1])
+chem.plot_absolute_chemistry("CO", "HCO+", axes=ax[0, 2])
+chem.plot_absolute_chemistry("CN", "HCN", axes=ax[1, 2])
 
 
 plt.show()
