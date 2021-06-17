@@ -75,7 +75,7 @@ class RadMCBase(MapBase):
         else:
             raise CHEFTypeError("theta_bins should be None or int, not %s (%s)", type(self.theta_bins), self.theta_bins)
 
-        theta = np.pi / 2 - np.arctan(zr)
+        theta = np.pi / 2 * u.rad - np.arctan(zr)
         self.radii_edges = u.Quantity([radii[0], *np.sqrt(radii[1:] * radii[:-1]), radii[-1]]).value
         self.zr_edges = np.array([zr[0], *(0.5 * (zr[1:] + zr[:-1])), zr[-1]])
         self.theta_edges = np.sort(np.pi / 2 - np.arctan(self.zr_edges))

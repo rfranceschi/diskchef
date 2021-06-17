@@ -1,3 +1,4 @@
+import sys
 import numpy as np
 import pytest
 from astropy import units as u
@@ -80,6 +81,10 @@ def test_default_setup():
 #       __class__: astropy.units.quantity.Quantity
 #       unit: &id002 !astropy.units.Unit {unit: AU}
 #       value: !astropy.table.SerializedColumn {name: Height}
+#     Height to radius:
+#       __class__: astropy.units.quantity.Quantity
+#       unit: !astropy.units.Unit {unit: ''}
+#       value: !astropy.table.SerializedColumn {name: Height to radius}
 #     Radius:
 #       __class__: astropy.units.quantity.Quantity
 #       unit: *id002
@@ -92,8 +97,8 @@ Radius Height "Height to radius" "Gas density" "Dust density" "Gas temperature" 
 7.071067811865475 0.0 0.0 1.1378897425827754e-13 1.1378897425827755e-15 2.0000000000000004 2.0000000000000004
 7.071067811865475 2.474873734152916 0.35 1.5847357750038788e-14 1.5847357750038788e-16 2.0000000000000004 2.0000000000000004
 7.071067811865475 4.949747468305832 0.7 4.2808193485924884e-17 4.2808193485924885e-19 2.0000000000000004 2.0000000000000004
-499.99999999999994 0.0 0.0 8.943789652093236e-19 8.943789652093236e-21 0.0004000000000000001 0.0004000000000000001
-499.99999999999994 174.99999999999997 0.35 7.211423548391477e-19 7.211423548391478e-21 0.0004000000000000001 0.0004000000000000001
-499.99999999999994 349.99999999999994 0.7 3.7802392342957524e-19 3.7802392342957524e-21 0.0004000000000000001 0.0004000000000000001"""
+500.0 0.0 0.0 0.0 0.0 0.0 0.0
+500.0 175.0 0.35 0.0 0.0 0.0 0.0
+500.0 350.0 0.7 0.0 0.0 0.0 0.0"""
     tbl = read(expected)
     assert not setdiff(tbl, physics.table)
