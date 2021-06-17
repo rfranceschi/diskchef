@@ -6,7 +6,7 @@ from diskchef.physics.williams_best import WilliamsBest2014
 
 def test_default_setup():
     physics = WilliamsBest2014(radial_bins=3, vertical_bins=3)
-    # physics.table.write(format="ascii.ecsv", filename=sys.stdout)
+    physics.table.write(format="ascii.ecsv", filename=sys.stdout)
     expected = """
 # %ECSV 0.9
 # ---

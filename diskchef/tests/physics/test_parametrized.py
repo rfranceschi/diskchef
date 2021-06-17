@@ -47,7 +47,7 @@ def test_piecewisepowerlaw(input, r, expected):
 
 def test_default_setup():
     physics = PowerLawPhysics(radial_bins=3, vertical_bins=3)
-    # physics.table.write(format="ascii.ecsv", filename=sys.stdout)
+    physics.table.write(format="ascii.ecsv", filename=sys.stdout)
     expected = """
 # %ECSV 0.9
 # ---

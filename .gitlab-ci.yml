@@ -1,5 +1,4 @@
-image: continuumio/anaconda3:2020.11
-
+image: continuumio/miniconda3:4.9.2
 # Change pip's cache directory to be inside the project directory since we can
 # only cache local items.
 variables:
@@ -11,8 +10,7 @@ cache:
 
 before_script:
   - python -V               # Print out python version for debugging
-  - apt update
-  - apt install -y gfortran
+  - apt update && apt install -y gfortran
   - conda install -y -c conda-forge galario
   - pip install .
 

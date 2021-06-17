@@ -19,6 +19,7 @@ setup(
         'uvplot',
         'spectral_cube',
         'radmc3dPy @ git+https://github.com/dullemond/radmc3d-2.0.git#subdirectory=python/radmc3dPy',
+        'sklearn'
     ],
     version_config=True,
     setup_requires=['setuptools-git-versioning'],
