@@ -1,19 +1,21 @@
+import os
 from dataclasses import dataclass
 from functools import cached_property
 import logging
 import warnings
+from typing import Union
 
 import scipy.integrate
 from astropy import units as u
 from astropy.visualization import quantity_support
 
 import matplotlib.axes
+import matplotlib.colors
 import numpy as np
-
-from divan import Divan
 
 from diskchef import CTable
 from diskchef.engine.exceptions import CHEFNotImplementedError, CHEFSlowDownWarning
+from diskchef.engine.plot import Plot2D
 
 quantity_support()
 
@@ -35,6 +37,31 @@ class PhysicsBase:
     def table(self, value: CTable):
         self._table = value
 
+    def plot_column_density(self, axes=None, table=None):
+        raise CHEFNotImplementedError
+
+    def plot_density(
+            self,
+            axes: matplotlib.axes.Axes = None,
+            table: CTable = None, folder=".",
+            cmap: Union[matplotlib.colors.Colormap, str] = 'PuBuGn',
+            **kwargs
+    ) -> Plot2D:
+        if table is None:
+            table = self.table
+        return Plot2D(table, axes=axes, data1="Gas density", data2="Dust density", cmap=cmap, **kwargs)
+
+    def plot_temperatures(
+            self,
+            axes: matplotlib.axes.Axes = None,
+            table: CTable = None, folder=".",
+            cmap: Union[matplotlib.colors.Colormap, str] = 'afmhot',
+            **kwargs
+    ) -> Plot2D:
+        if table is None:
+            table = self.table
+        return Plot2D(table, axes=axes, data1="Gas temperature", data2="Dust temperature", cmap=cmap, **kwargs)
+
 
 @dataclass
 class PhysicsModel(PhysicsBase):
@@ -55,8 +82,8 @@ class PhysicsModel(PhysicsBase):
         """Calculates gas density at given r, z"""
         raise CHEFNotImplementedError
 
-    @u.quantity_input(r=u.au, z=u.au)
-    def dust_temperature(self, r, z) -> u.K:
+    @u.quantity_input
+    def dust_temperature(self, r: u.au, z: u.au) -> u.K:
         """Calculates dust temperature at given r, z"""
         raise CHEFNotImplementedError
 
@@ -89,7 +116,7 @@ class PhysicsModel(PhysicsBase):
             ],
             names=["Radius", "Height"]
         )
-        table["Height to radius"] = z2r.flatten()
+        table["Height to radius"] = u.Quantity(z2r.flatten())
         table["Gas density"] = self.gas_density(table.r, table.z)
         table["Dust density"] = self.dust_density(table.r, table.z)
         table["Gas temperature"] = self.gas_temperature(table.r, table.z)
@@ -167,16 +194,3 @@ class PhysicsModel(PhysicsBase):
                 integrals[this_zr_rows] = integrals_at_zr[idx]
 
         return u.Quantity(integrals)
-
-    def plot_column_density(self, axes=None, table=None):
-        raise CHEFNotImplementedError
-
-    def plot_density(self, axes: matplotlib.axes.Axes = None, table: CTable = None):
-        if table is None:
-            table = self.table
-        # if axes is None:
-        #     fig, axes = plt.subplots()
-        dvn = Divan()
-        dvn.physical_structure = table
-        dvn.generate_figure_volume_densities(extra_gas_to_dust=100)
-        dvn.generate_figure_temperatures()

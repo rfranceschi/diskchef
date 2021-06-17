@@ -1,4 +1,6 @@
 from dataclasses import dataclass
+from typing import Union
+import logging
 
 from astropy import units as u
 
@@ -16,7 +18,6 @@ class Line:
 
     Usage:
     >>> line = Line(name="HCO+ J=2-1", transition=1, molecule="HCO+")
-    >>> line.parse_lamda()
     >>> line.lamda_molecule, line.molweight, line.number_levels
     ('HCO+', 29.0, 31)
 
@@ -40,15 +41,20 @@ class Line:
     transition: int
     molecule: str
     collision_partner: tuple = ('H2',)
+    lamda_file: Union[None, PathLike] = None
 
     def __post_init__(self):
+        self.logger = logging.getLogger(__name__ + '.' + self.__class__.__qualname__ + f'({self.name})')
+        self.logger.info("Creating an instance of %s", self.__class__.__qualname__)
+        self.logger.debug("With parameters: %s", self.__dict__)
         self.parse_lamda()
 
-    def parse_lamda(self, lamda_file: PathLike = None):
+    def parse_lamda(self):
         """Parses LAMDA database file to identify collision partner and frequency"""
-        if lamda_file is None:
-            lamda_file = diskchef.lamda.file(self.molecule)[0]
-        with open(lamda_file) as lamda:
+        if self.lamda_file is None:
+            self.lamda_file = diskchef.lamda.lamda_files(self.molecule)[0]
+            self.logger.info("Found LAMDA file: %s", self.lamda_file)
+        with open(self.lamda_file) as lamda:
             lamda.readline()
             self.lamda_molecule = lamda.readline().strip()
             lamda.readline()

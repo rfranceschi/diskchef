@@ -1,16 +1,17 @@
 from dataclasses import dataclass
 
 import logging
-from typing import List
+from typing import List, Union
 
 from diskchef.chemistry.base import ChemistryBase
+from diskchef.physics.base import PhysicsBase
 from diskchef.lamda.line import Line
 
 
 @dataclass
 class MapBase:
     """The base class for map generation"""
-    chemistry: ChemistryBase = None
+    chemistry: Union[ChemistryBase, PhysicsBase] = None
     line_list: List[Line] = None
 
     def __post_init__(self):

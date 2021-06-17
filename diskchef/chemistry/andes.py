@@ -18,7 +18,7 @@ from diskchef.engine.other import PathLike
 @dataclass
 class ReadAndesData(ChemistryBase):
     """
-    blah
+    Class to read ANDES2 output for following usage in `diskchef.maps`
     """
     folder: PathLike = None
     index: int = 0
@@ -43,7 +43,10 @@ class ReadAndesData(ChemistryBase):
             ],
             names=["Radius", "Height"]
         )
-        table["Height to radius"] = chemistry["Relative Height"]
+        if "Relative Height" in chemistry.colnames:
+            table["Height to radius"] = chemistry["Relative Height"]
+        else:
+            table["Height to radius"] = chemistry["Height"] / chemistry["Radius"]
         table["Gas density"] = physics["Gas density"] << (u.g / u.cm ** 3)
         table["Dust density"] = physics["Dust density"] << (u.g / u.cm ** 3)
         table["Gas temperature"] = physics["Gas temperature"] << (u.K)
@@ -60,8 +63,8 @@ class ReadAndesData(ChemistryBase):
         return table
 
     def __post_init__(self):
-        super().__post_init__()
         self._table = self.read()
+        super().__post_init__()
 
     def _config_read(self, path: PathLike) -> dict:
         out = {}

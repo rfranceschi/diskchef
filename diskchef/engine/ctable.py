@@ -8,14 +8,8 @@ import numpy as np
 from astropy import units as u
 from astropy.table import QTable
 from scipy.interpolate import griddata
-from named_constants import Constants
 
 from diskchef.engine.exceptions import CHEFNotImplementedError, CHEFRuntimeError
-
-
-class TableColumns(Constants):
-    radius = 'Radius'
-    height = 'Height'
 
 
 class CTable(QTable):
@@ -113,7 +107,7 @@ class CTable(QTable):
         # TODO non-linear interpolation
         def _interpolation(r: u.au, z: u.au):
             interpolated = griddata(
-                points=(self.r, self.z),
+                points=(self.r.to(u.au).value, self.z.to(u.au).value),
                 values=self[column],
                 xi=(r.to(u.au).value, z.to(u.au).value),
                 fill_value=0
