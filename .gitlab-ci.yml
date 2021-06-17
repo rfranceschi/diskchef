@@ -21,29 +21,19 @@ test:
   - pytest --doctest-modules --cov diskchef
 
 pages:
+  stage: deploy
   script:
-  - pip install pdoc3 pytest-cov
-  - pdoc --html diskchef --overwrite
-  - mv html/diskchef/ public/
+    - shopt -s extglob
+    - pip install pdoc3 pytest-cov
+    - pdoc --html diskchef --overwrite
+    - mkdir -p cache/$CI_COMMIT_BRANCH
+    - rm -rf cache/$CI_COMMIT_BRANCH/*
+    - cp -r html/diskchef/* cache/$CI_COMMIT_BRANCH/
+    - cp -r cache public
   artifacts:
     paths:
-    - public
-  only:
-  - master
+      - public
 
-pages-extra:
-   script:
-   - pip install pdoc3 pytest-cov
-   - pdoc --html diskchef --overwrite
-   - mkdir -p public/$CI_COMMIT_BRANCH
-   - cp html/diskchef/* public/$CI_COMMIT_BRANCH/ -R
-   artifacts:
-     name: "$CI_COMMIT_BRANCH"
-     paths:
-     - public
-   except:
-   - master
-#
 # pylint:
 #   stage: test
 #   before_script:
