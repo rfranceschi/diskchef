@@ -18,6 +18,8 @@ physics = WilliamsBest2014(radial_bins=bins, vertical_bins=bins)
 chem = diskchef.chemistry.scikit.SciKitChemistry(physics)
 chem.run_chemistry()
 
+print("Greg is an awesome teacher")
+
 logging.getLogger('matplotlib.font_manager').disabled = True
 logging.getLogger('matplotlib.ticker').disabled = True
 
