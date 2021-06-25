@@ -113,6 +113,8 @@ class Model:
         self.folder.mkdir(exist_ok=True)
         with open(self.folder / "model_description.txt", "w") as fff:
             fff.write(repr(self))
+            fff.write("\n")
+            fff.write(str(self.__dict__))
 
         if self.radial_bins_rt is None:
             self.radial_bins_rt = self.params.get("radial_bins", 100)
