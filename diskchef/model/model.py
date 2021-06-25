@@ -1,3 +1,5 @@
+import pickle
+
 from functools import cached_property
 import pathlib
 from typing import List, Type
@@ -8,6 +10,7 @@ import astropy.wcs
 import astropy.table
 from astropy import units as u
 import spectral_cube
+from matplotlib import pyplot as plt
 
 import diskchef.physics.base
 from diskchef.chemistry.scikit import SciKitChemistry
@@ -107,18 +110,23 @@ class Model:
             self.folder = pathlib.Path(self.disk)
         else:
             self.folder = pathlib.Path(self.folder)
+        self.folder.mkdir(exist_ok=True)
+        with open(self.folder / "model_description.txt", "w") as fff:
+            fff.write(repr(self))
+            fff.write("\n")
+            fff.write(str(self.__dict__))
 
         if self.radial_bins_rt is None:
             self.radial_bins_rt = self.params.get("radial_bins", 100)
         if self.vertical_bins_rt is None:
             self.radial_bins_rt = self.params.get("vertical_bins", 100)
 
-        disk_physical_model = WilliamsBest2014(**self.params)
+        self.disk_physical_model = WilliamsBest2014(**self.params)
         dust = DustPopulation(dust_files("diana")[0],
-                              table=disk_physical_model.table,
+                              table=self.disk_physical_model.table,
                               name="DIANA dust")
         dust.write_to_table()
-        self.disk_chemical_model = SciKitChemistry(disk_physical_model)
+        self.disk_chemical_model = SciKitChemistry(self.disk_physical_model)
         if self.run:
             self.run_simulation()
 
@@ -126,7 +134,7 @@ class Model:
         """Run all the steps of the simulation"""
         if self.run_mctherm: self.mctherm()
         self.chemistry()
-        # self.plot()
+        self.plot()
         self.image()
         self.photometry()
 
@@ -144,7 +152,7 @@ class Model:
         )
 
         self.mctherm_model.create_files()
-        self.mctherm_model.run(threads=1)
+        self.mctherm_model.run(threads=4)
         self.mctherm_model.read_dust_temperature()
 
     def image(
@@ -181,28 +189,30 @@ class Model:
         self.disk_chemical_model.table['13C18O'] = self.disk_chemical_model.table['CO'] / (77 * 560)
 
     def plot(self, **kwargs):
-        """Plot physical and chemical structure using `divan`"""
-        # dvn = Divan(matplotlib_style='divan.mplstyle')
-        # dvn.physical_structure = self.disk_chemical_model.table
-        # dvn.chemical_structure = self.disk_chemical_model.table
-        # dvn.generate_figure_volume_densities(extra_gas_to_dust=100, **kwargs)
-        # dvn.generate_figure_temperatures(
-        #     **kwargs)  # gas_temperature=disk_chemical_model.table["Original Dust temperature"])
-        # dvn.generate_figure(
-        #     data1='Original Dust temperature',
-        #     data2='RadMC Dust temperature',
-        #     r=self.disk_chemical_model.table.r,
-        #     z=self.disk_chemical_model.table.z,
-        #     **kwargs
-        # )
-        # self.disk_chemical_model.physics.plot_density(**kwargs)
-        # self.disk_chemical_model.plot_chemistry(**kwargs)
-        # dvn.generate_figure_chemistry(spec1="CO", normalizer=colors.LogNorm(), **kwargs)
-        # dvn.generate_figure_chemistry(spec1="HCO+", normalizer=colors.LogNorm(), **kwargs)
-        # dvn.generate_figure_chemistry(spec1="N2H+", normalizer=colors.LogNorm(), **kwargs)
-        # dvn.generate_figure_chemistry(spec1="HCN", normalizer=colors.LogNorm(), **kwargs)
-        # dvn_figure = self.folder / "figs.pdf"
-        # dvn.save_figures_pdf(dvn_figure)
+        """Plot physical and chemical structure"""
+        fig, ax = plt.subplots(2, 2, sharex=True, sharey=True, figsize=(11, 10))
+
+        self.disk_physical_model.plot_density(axes=ax[0, 0])
+        tempplot = self.disk_physical_model.plot_temperatures(axes=ax[1, 0])
+        tempplot.contours("Gas temperature", [20, 40] * u.K)
+
+        self.disk_chemical_model.plot_chemistry("CO", "CO", axes=ax[0, 1])
+        coplot = self.disk_chemical_model.plot_absolute_chemistry("CO", "CO", axes=ax[1, 1], maxdepth=1e9)
+        coplot.contours("Gas temperature", [20, 40] * u.K, clabel_kwargs={"fmt": "T=%d K"})
+        fig.savefig(self.folder / "structure.png")
+        fig.savefig(self.folder / "structure.pdf")
+        return fig
+
+    def pickle(self):
+        """Pickle the model class in a file -- not working"""
+        with open(self.folder / "model.pkl", "wb") as pkl:
+            pickle.dump(self, pkl)
+
+    @classmethod
+    def from_picke(cls, path: pathlib.Path):
+        """Return the model class from the pickle file  -- experimental"""
+        with open(path, "rb") as pkl:
+            return pickle.load(pkl)
 
     @cached_property
     def output_fluxes(self) -> pathlib.Path:
