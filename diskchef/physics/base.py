@@ -59,9 +59,20 @@ class PhysicsBase:
             **kwargs
     ) -> Plot2D:
         if table is None:
+            self.check_temperatures()
             table = self.table
         return Plot2D(table, axes=axes, data1="Gas temperature", data2="Dust temperature", cmap=cmap, **kwargs)
 
+    def check_zeros(self, column):
+        """Replaces zeros in `self.table[column]` with the second smallest element"""
+        if 0 in self.table[column].value:
+            self.table[column][self.table[column].value == 0] \
+                = sorted(set(self.table[column]))[1]
+            self.logger.warning("Found zeros in %s", column)
+
+    def check_temperatures(self):
+        self.check_zeros("Gas temperature")
+        self.check_zeros("Dust temperature")
 
 @dataclass
 class PhysicsModel(PhysicsBase):
