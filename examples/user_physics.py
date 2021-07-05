@@ -10,12 +10,14 @@ from astropy import constants as c
 
 @dataclass
 class MyIsothermalPhysics(PhysicsModel):
-    """Example of a user-written Physics subclass
+    """Example of a user-written `Physics` subclass
 
-    In PhysicsModel, if `dust_density` is not defined,
+    In `PhysicsModel`, if `dust_density` is not defined,
     it is assumed equal to `gas_density * self.gas_to_dust`,
     and `gas_temperature` is assumed to be equal to
-    `dust_temperature`
+    `dust_temperature`. So it is enough to define `dust_temperature`
+    and `gas_density` methods. Additional methods, like
+    `scale_height`, can be defined to make the code more modular.
 
     Usage:
     Initialize the model, but do not calculate anything yet
@@ -23,7 +25,7 @@ class MyIsothermalPhysics(PhysicsModel):
 
     Calcualtions happen when `table` property is first accessed
     >>> print(mydisk.table[:5])  # doctest: +NORMALIZE_WHITESPACE
-           Radius       Height    Height to radius Gas density  Dust density Gas temperature Dust temperature
+       Radius       Height    Height to radius Gas density  Dust density Gas temperature Dust temperature
          AU           AU                         g / cm3      g / cm3           K               K
     ------------ ------------ ---------------- ------------ ------------ --------------- ----------------
     1.000000e-01 0.000000e+00     0.000000e+00 2.666585e-11 2.666585e-13    1.000000e+02     1.000000e+02

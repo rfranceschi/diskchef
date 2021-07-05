@@ -15,7 +15,7 @@ import numpy as np
 
 from diskchef import CTable
 from diskchef.engine.exceptions import CHEFNotImplementedError, CHEFSlowDownWarning
-from diskchef.engine.plot import Plot2D
+from diskchef.engine.plot import Plot2D, Plot1D
 
 quantity_support()
 
@@ -36,9 +36,6 @@ class PhysicsBase:
     @table.setter
     def table(self, value: CTable):
         self._table = value
-
-    def plot_column_density(self, axes=None, table=None):
-        raise CHEFNotImplementedError
 
     def plot_density(
             self,
@@ -63,6 +60,16 @@ class PhysicsBase:
             table = self.table
         return Plot2D(table, axes=axes, data1="Gas temperature", data2="Dust temperature", cmap=cmap, **kwargs)
 
+    def plot_column_densities(
+            self,
+            axes: matplotlib.axes.Axes = None,
+            table: CTable = None, folder=".",
+            **kwargs
+    ) -> Plot1D:
+        if table is None:
+            table = self.table
+        return Plot1D(table, axes=axes, data=["Gas density", "Dust density"], **kwargs)
+
     def check_zeros(self, column):
         """Replaces zeros in `self.table[column]` with the second smallest element"""
         if 0 in self.table[column].value:
@@ -73,6 +80,7 @@ class PhysicsBase:
     def check_temperatures(self):
         self.check_zeros("Gas temperature")
         self.check_zeros("Dust temperature")
+
 
 @dataclass
 class PhysicsModel(PhysicsBase):

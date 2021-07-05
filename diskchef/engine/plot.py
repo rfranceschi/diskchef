@@ -24,23 +24,13 @@ from chemical_names import from_string
 
 
 @dataclass
-class Plot2D:
-    """2D visualization of a disk"""
+class Plot:
     table: CTable
-    data1: str = None
-    data2: str = None
-    x_axis: str = "Radius"
-    y_axis: str = "Height to radius"
     axes: matplotlib.axes.Axes = None
     xscale: Union[Literal["linear", "log", "symlog", "logit"], matplotlib.scale.ScaleBase] = "log"
     yscale: Union[Literal["linear", "log", "symlog", "logit"], matplotlib.scale.ScaleBase] = "linear"
     margins: float = 0.
-    norm: matplotlib.colors.Normalize = None
-    colorbar: bool = True
-    labels: bool = True
     unit_format: Literal["latex", "cds", None] = "latex"
-    cmap: Union[matplotlib.colors.Colormap, str] = None
-    multiply_by: Union[str, float] = 1.
     maxdepth: float = 1e6
 
     def __post_init__(self):
@@ -50,6 +40,35 @@ class Plot2D:
 
         if self.axes is None:
             self.axes = plt.axes()
+
+
+    def normalize_axes(self):
+        self.axes.set_xscale(self.xscale)
+        self.axes.set_yscale(self.yscale)
+        self.axes.margins(self.margins)
+
+    def formatted(self, unit: u.Unit):
+        if unit == u.dimensionless_unscaled:
+            return "[--]"
+        else:
+            return fr"[{unit.to_string(self.unit_format)}]"
+
+
+@dataclass
+class Plot2D(Plot):
+    """2D visualization of a disk"""
+    data1: str = None
+    data2: str = None
+    x_axis: str = "Radius"
+    y_axis: str = "Height to radius"
+    norm: matplotlib.colors.Normalize = None
+    colorbar: bool = True
+    labels: bool = True
+    cmap: Union[matplotlib.colors.Colormap, str] = None
+    multiply_by: Union[str, float] = 1.
+
+    def __post_init__(self):
+        super().__post_init__()
         if self.norm is None:
             self.norm = LogNormMaxOrders(maxdepth=self.maxdepth)
 
@@ -63,16 +82,14 @@ class Plot2D:
         self.data_unit = data1_q.unit
         self.norm(data1)
         x_axis = self.table[self.x_axis].value
-        self.x_unit = self.table[self.x_axis].unit
         y_axis = self.table[self.y_axis].value
+        self.x_unit = self.table[self.x_axis].unit
         self.y_unit = self.table[self.y_axis].unit
-
-        levels = np.logspace(np.round(np.log10(self.norm.vmin)), np.round(np.log10(self.norm.vmax)), 10)
-
-        self.axes.set_xscale(self.xscale)
-        self.axes.set_yscale(self.yscale)
         self.axes.set_xlabel(f"{self.x_axis} {self.formatted(self.x_unit)}")
         self.axes.set_ylabel(f"{self.y_axis} {self.formatted(self.y_unit)}")
+        levels = np.logspace(np.round(np.log10(self.norm.vmin)), np.round(np.log10(self.norm.vmax)), 13)
+
+        self.normalize_axes()
         im = self.axes.tricontourf(
             x_axis, y_axis,
             data1,
@@ -102,7 +119,7 @@ class Plot2D:
         if self.colorbar:
             im.set_clim(self.norm.vmin, self.norm.vmax)
             self.cbar = self.axes.figure.colorbar(
-                im, ax=self.axes, extend="both",
+                im, ax=self.axes,
             )
             self.cbar.set_label(self.formatted(data1_q.unit), rotation="horizontal")
             self.cbar.ax.minorticks_off()
@@ -128,12 +145,6 @@ class Plot2D:
                         fc=(1., 1., 1., 0.7),
                     )
                 )
-
-    def formatted(self, unit: u.Unit):
-        if unit == u.dimensionless_unscaled:
-            return "[--]"
-        else:
-            return fr"[{unit.to_string(self.unit_format)}]"
 
     def contours(
             self,
@@ -178,3 +189,32 @@ class Plot2D:
             except u.core.UnitConversionError as e:
                 self.logger.info(e)
         conts.clabel(levels.to_value(dataunit), use_clabeltext=True, inline=True, inline_spacing=1, **clabel_kwargs)
+
+
+@dataclass
+class Plot1D(Plot):
+    data: List[str] = None
+    x_axis: u.au = None
+    yscale: Union[Literal["linear", "log", "symlog", "logit"], matplotlib.scale.ScaleBase] = "log"
+    labels: bool = True
+    cmap: Union[matplotlib.colors.Colormap, str] = None
+
+    def __post_init__(self):
+        super().__post_init__()
+        if not self.data:
+            raise ValueError("List of `data` arguments must be specified")
+        if self.x_axis is None:
+            if self.table.is_in_zr_regular_grid:
+                self.x_axis = u.Quantity(sorted(set(self.table.r)))
+            else:
+                self.x_axis = np.geomspace(np.min(self.table.r), np.max(self.table), 100)
+        self.x_unit = self.x_axis.unit
+        self.y_unit = (self.table[self.data[0]][0] * self.x_axis[0]).cgs.unit
+        self.normalize_axes()
+        self.axes.set_xlabel(f"Radius {self.formatted(self.x_unit)}")
+        self.axes.set_ylabel(f"{self.formatted(self.y_unit)}")
+
+        for colname in self.data:
+            data_to_plot = self.table.column_density(colname, self.x_axis).cgs
+            self.axes.plot(self.x_axis, data_to_plot, label=from_string(colname))
+        self.axes.legend()
