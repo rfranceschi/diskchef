@@ -77,7 +77,13 @@ class CTable(QTable):
     """
 
     def __getitem__(self, item):
-        column_quantity = super().__getitem__(item)
+        try:
+            column_quantity = super().__getitem__(item)
+        except KeyError as e:
+            if " number density" in item:
+                column_quantity = self[item[:-len(" number density")]] * self["n(H+2H2)"]
+            else:
+                raise e
         column_quantity.name = item
         return column_quantity
 
@@ -167,3 +173,30 @@ class CTable(QTable):
             dust.write_to_table()
         if not self.dust_population_fully_set:
             raise CHEFRuntimeError
+
+    def column_density(self, colname: str, r: u.au = None) -> u.Quantity:
+        """
+        Calculate column density of `colname` on `r` grid
+        Args:
+            colname: name of the column to collapse
+            r: grid (centers) for the output. If not specified, defaults to `sorted(set(self.r))`
+
+        Returns:
+            column density of `self[colname]` on `r` grid
+        """
+        if r is None:
+            r = sorted(set(self.r))
+
+        if self.is_in_zr_regular_grid:
+            r_grid = sorted(set(self.r))
+            coldenses = []
+            for _r in r_grid:
+                indices = self.r == _r
+                value = self[colname][indices]
+                z = self.z[indices]
+                coldenses.append(np.trapz(value, z))
+            coldenses = u.Quantity(coldenses)
+            return np.interp(r, r_grid, coldenses)
+        else:
+            raise NotImplementedError("Column density is currently only implemented for zr grids")
+
