@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 import logging
-from typing import Union
+from typing import Union, List
 
 from astropy import units as u, constants as const
 from matplotlib import colors
@@ -11,7 +11,7 @@ from diskchef.engine.exceptions import CHEFNotImplementedError
 from diskchef.chemistry.abundances import Abundances
 from diskchef.physics.base import PhysicsBase
 from diskchef.physics.williams_best import WilliamsBest2014
-from diskchef.engine.plot import Plot2D
+from diskchef.engine.plot import Plot2D, Plot1D
 
 
 @dataclass
@@ -55,6 +55,17 @@ class ChemistryBase:
 
     def plot_absolute_chemistry(self, *args, cmap="RdPu", **kwargs) -> Plot2D:
         return self.plot_chemistry(*args, multiply_by="n(H+2H2)", cmap=cmap, **kwargs)
+
+    def plot_column_densities(
+            self,
+            axes: matplotlib.axes.Axes = None,
+            table: diskchef.CTable = None, folder=".",
+            species: List[str] = ("CO", "HCO+", "CN", "HCN"),
+            **kwargs
+    ) -> Plot1D:
+        if table is None:
+            table = self.table
+        return Plot1D(table, axes=axes, data=[spice + " number density" for spice in species], **kwargs)
 
 
 @dataclass

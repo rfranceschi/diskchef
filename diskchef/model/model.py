@@ -110,7 +110,7 @@ class Model:
             self.folder = pathlib.Path(self.disk)
         else:
             self.folder = pathlib.Path(self.folder)
-        self.folder.mkdir(exist_ok=True)
+        self.folder.mkdir(exist_ok=True, parents=True)
         with open(self.folder / "model_description.txt", "w") as fff:
             fff.write(repr(self))
             fff.write("\n")
@@ -188,7 +188,7 @@ class Model:
                 560 * 5)  # http://articles.adsabs.harvard.edu/pdf/1994ARA%26A..32..191W
         self.disk_chemical_model.table['13C18O'] = self.disk_chemical_model.table['CO'] / (77 * 560)
 
-    def plot(self, **kwargs):
+    def plot(self, save=None, **kwargs):
         """Plot physical and chemical structure"""
         fig, ax = plt.subplots(2, 2, sharex=True, sharey=True, figsize=(11, 10))
 
@@ -199,8 +199,9 @@ class Model:
         self.disk_chemical_model.plot_chemistry("CO", "CO", axes=ax[0, 1])
         coplot = self.disk_chemical_model.plot_absolute_chemistry("CO", "CO", axes=ax[1, 1], maxdepth=1e9)
         coplot.contours("Gas temperature", [20, 40] * u.K, clabel_kwargs={"fmt": "T=%d K"})
-        fig.savefig(self.folder / "structure.png")
-        fig.savefig(self.folder / "structure.pdf")
+        if save:
+            fig.savefig(self.folder / "structure.png")
+            fig.savefig(self.folder / "structure.pdf")
         return fig
 
     def pickle(self):
