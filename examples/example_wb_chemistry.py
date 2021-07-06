@@ -21,14 +21,12 @@ chem.run_chemistry()
 fig, ax = plt.subplots(2, 2, sharex=True, sharey=True, figsize=(10, 10))
 physics.plot_density(axes=ax[0, 0])
 tempplot = physics.plot_temperatures(axes=ax[1, 0])
-tempplot.contours("Gas temperature", [20] * u.mK * 1000, colors="white")
+tempplot.contours("Gas temperature", [20] * u.K, colors="white")
 
 coplot = chem.plot_chemistry("CO", "CO", axes=ax[0, 1])
-coldensplot = diskchef.engine.plot.Plot2D(
-    chem.table,
-    data1="H2 column density towards star", data2="H2 column density upwards", axes=ax[1, 1]
-)
-coldensplot.contours(data="H2 column density towards star", levels=[1.3e21] / u.cm ** 2, location="upper", colors="orange")
+coldensplot = chem.plot_column_densities_2d(axes=ax[1, 1])
+coldensplot.contours(data="H2 column density towards star", levels=[1.3e21] / u.cm ** 2, location="upper",
+                     colors="orange")
 coldensplot.contours(data="H2 column density upwards", levels=[1.3e21] / u.cm ** 2, location="bottom", colors="red")
 
 coplot.contours(data="H2 column density towards star", levels=[1.3e21] / u.cm ** 2, location="upper", colors="orange")

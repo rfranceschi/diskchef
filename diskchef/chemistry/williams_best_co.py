@@ -79,51 +79,6 @@ class ChemistryWB2014(ChemistryModel):
             | (self.table["H2 column density upwards"] < self.h2_column_denisty_that_shields_co)
             ] = self.atmosphere_co_abundance
 
-    def calculate_column_density_towards_star(self, species: str):
-        """
-        Calculates the column density of a given species towards star for each self.table row
-
-        Adds two columns to the table: f"{species} number density" and f"{species} column density towards star"
-
-        Args:
-            species: species to integrate
-
-        Returns: self.table[f"{species} column density towards star"]
-        """
-        self.table[f"{species} number density"] = self.table[species] * self.table["n(H+2H2)"]
-        self.table[f"{species} column density towards star"] = self.physics.column_density_to(
-            self.table.r, self.table.z,
-            f"{species} number density",
-            only_gridpoint=True,
-        )
-
-        return self.table[f"{species} column density towards star"]
-
-    def calculate_column_density_upwards(self, species: str):
-        """
-        Calculates the column density of a given species towards star for each self.table row
-
-        Adds two columns to the table: f"{species} number density" and f"{species} column density upwards"
-
-        Args:
-            species: species to integrate
-
-        Returns: self.table[f"{species} column density towards star"]
-        """
-        self.table[f"{species} number density"] = self.table[species] * self.table["n(H+2H2)"]
-
-        if not self.table.is_in_zr_regular_grid:
-            raise diskchef.engine.CHEFNotImplementedError("Implemented only for regular grids")
-
-        self.table[f"{species} column density upwards"] = self.physics.column_density_to(
-            np.nan * u.au, np.nan * u.au,
-            f"{species} number density",
-            r0=np.nan * u.au, z0=np.inf * u.au,
-            only_gridpoint=True,
-        )
-
-        return self.table[f"{species} column density towards star"]
-
 
 @dataclass
 class NonzeroChemistryWB2014(ChemistryWB2014):
