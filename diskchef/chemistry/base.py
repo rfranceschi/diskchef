@@ -5,6 +5,7 @@ from typing import Union, List
 from astropy import units as u, constants as const
 from matplotlib import colors
 import matplotlib.axes
+import numpy as np
 
 import diskchef
 from diskchef.engine.exceptions import CHEFNotImplementedError
@@ -66,6 +67,67 @@ class ChemistryBase:
         if table is None:
             table = self.table
         return Plot1D(table, axes=axes, data=[spice + " number density" for spice in species], **kwargs)
+
+    def plot_column_densities_2d(
+            self,
+            species="H2",
+            axes: matplotlib.axes.Axes = None,
+            table: diskchef.CTable = None, folder=".",
+            cmap: Union[matplotlib.colors.Colormap, str] = 'pink_r',
+            **kwargs
+    ) -> Plot2D:
+        if table is None:
+            table = self.table
+        return Plot2D(
+            table,
+            data1=f"{species} column density towards star", data2=f"{species} column density upwards",
+            axes=axes, cmap=cmap, **kwargs
+        )
+
+    def calculate_column_density_towards_star(self, species: str):
+        """
+        Calculates the column density of a given species towards star for each self.table row
+
+        Adds two columns to the table: f"{species} number density" and f"{species} column density towards star"
+
+        Args:
+            species: species to integrate
+
+        Returns: self.table[f"{species} column density towards star"]
+        """
+        self.table[f"{species} number density"] = self.table[species] * self.table["n(H+2H2)"]
+        self.table[f"{species} column density towards star"] = self.physics.column_density_to(
+            self.table.r, self.table.z,
+            f"{species} number density",
+            only_gridpoint=True,
+        )
+
+        return self.table[f"{species} column density towards star"]
+
+    def calculate_column_density_upwards(self, species: str):
+        """
+        Calculates the column density of a given species towards star for each self.table row
+
+        Adds two columns to the table: f"{species} number density" and f"{species} column density upwards"
+
+        Args:
+            species: species to integrate
+
+        Returns: self.table[f"{species} column density towards star"]
+        """
+        self.table[f"{species} number density"] = self.table[species] * self.table["n(H+2H2)"]
+
+        if not self.table.is_in_zr_regular_grid:
+            raise diskchef.engine.CHEFNotImplementedError("Implemented only for regular grids")
+
+        self.table[f"{species} column density upwards"] = self.physics.column_density_to(
+            np.nan * u.au, np.nan * u.au,
+            f"{species} number density",
+            r0=np.nan * u.au, z0=np.inf * u.au,
+            only_gridpoint=True,
+        )
+
+        return self.table[f"{species} column density towards star"]
 
 
 @dataclass
