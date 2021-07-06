@@ -1,4 +1,6 @@
 """Class CTable(astropy.table.QTable) with additional features for CheF"""
+import warnings
+
 import io
 from contextlib import redirect_stdout
 from functools import cached_property
@@ -200,3 +202,12 @@ class CTable(QTable):
         else:
             raise NotImplementedError("Column density is currently only implemented for zr grids")
 
+    def check_zeros(self, column):
+        """Replaces zeros in `table[column]` with the second smallest by absolute value element"""
+        if 0 in u.Quantity(self[column]).value:
+            values_set = sorted(set(np.abs(self[column])))
+            if len(values_set) > 2:
+                self[column][self[column].value == 0] = values_set[1]
+            else:
+                self[column][self[column].value == 0] = values_set[1] / 1e6
+            warnings.warn("Found zeros in %s" % column)
