@@ -19,6 +19,7 @@ from matplotlib import pyplot as plt
 
 from diskchef import CTable
 from diskchef.engine.other import LogNormMaxOrders
+from diskchef.engine.exceptions import CHEFValueError
 
 from chemical_names import from_string
 
@@ -40,7 +41,6 @@ class Plot:
 
         if self.axes is None:
             self.axes = plt.axes()
-
 
     def normalize_axes(self):
         self.axes.set_xscale(self.xscale)
@@ -66,6 +66,7 @@ class Plot2D(Plot):
     labels: bool = True
     cmap: Union[matplotlib.colors.Colormap, str] = None
     multiply_by: Union[str, float] = 1.
+    levels: u.Quantity = None
 
     def __post_init__(self):
         super().__post_init__()
@@ -77,6 +78,9 @@ class Plot2D(Plot):
         except (KeyError, ValueError):
             pass
 
+        self.table.check_zeros(self.data1)
+        self.table.check_zeros(self.data2)
+
         data1_q = u.Quantity(self.table[self.data1] * self.multiply_by)
         data1 = data1_q.value
         self.data_unit = data1_q.unit
@@ -87,13 +91,14 @@ class Plot2D(Plot):
         self.y_unit = self.table[self.y_axis].unit
         self.axes.set_xlabel(f"{self.x_axis} {self.formatted(self.x_unit)}")
         self.axes.set_ylabel(f"{self.y_axis} {self.formatted(self.y_unit)}")
-        levels = np.logspace(np.round(np.log10(self.norm.vmin)), np.round(np.log10(self.norm.vmax)), 13)
+        if self.levels is None:
+            self.levels = np.logspace(np.round(np.log10(self.norm.vmin)), np.round(np.log10(self.norm.vmax)), 13)
 
         self.normalize_axes()
         im = self.axes.tricontourf(
             x_axis, y_axis,
             data1,
-            levels=levels,
+            levels=self.levels,
             norm=self.norm,
             extend="both",
             cmap=self.cmap,
@@ -103,7 +108,7 @@ class Plot2D(Plot):
             self.axes.tricontourf(
                 x_axis, -y_axis,
                 data2,
-                levels=levels,
+                levels=self.levels,
                 norm=self.norm,
                 extend="both",
                 cmap=self.cmap,
@@ -173,6 +178,10 @@ class Plot2D(Plot):
             data = [*data, *data]
         elif location == "bottom":
             y_axis = -y_axis
+        elif location == "upper":
+            pass
+        else:
+            raise CHEFValueError('location bust be one of ["upper", "bottom", "both"]')
         conts = self.axes.tricontour(
             x_axis, y_axis,
             data,

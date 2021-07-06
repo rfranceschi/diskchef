@@ -1,7 +1,9 @@
 from dataclasses import dataclass
 
+import numpy as np
 from astropy import units as u
 
+import diskchef.engine
 from diskchef.chemistry.base import ChemistryModel
 from diskchef.physics.williams_best import WilliamsBest2014
 
@@ -40,7 +42,7 @@ class ChemistryWB2014(ChemistryModel):
     >>> # This updates chemistry.table with new columns
     >>> chemistry.table.colnames  # doctest: +NORMALIZE_WHITESPACE
     ['Radius', 'Height', 'Height to radius', 'Gas density', 'Dust density', 'Gas temperature', 'Dust temperature',
-     'n(H+2H2)', 'H2', 'H2 number density', 'H2 column density towards star', 'CO']
+    'n(H+2H2)', 'H2', 'H2 number density', 'H2 column density towards star', 'H2 column density upwards', 'CO']
     >>> chemistry.table['H2']
     <Column name='H2' dtype='float64' length=9>
     0.5
@@ -65,7 +67,7 @@ class ChemistryWB2014(ChemistryModel):
     def run_chemistry(self):
         self.table["H2"] = 0.5
         self.calculate_column_density_towards_star("H2")
-        # self.calculate_column_density_upwards("H2")  # TODO to be optimized!
+        self.calculate_column_density_upwards("H2")
 
         self.table["CO"] = self.midplane_co_abundance
         self.table["CO"][
@@ -74,7 +76,7 @@ class ChemistryWB2014(ChemistryModel):
 
         self.table["CO"][
             (self.table["H2 column density towards star"] < self.h2_column_denisty_that_shields_co)
-            # | (self.table["H2 column density upwards"] < self.h2_column_denisty_that_shields_co)
+            | (self.table["H2 column density upwards"] < self.h2_column_denisty_that_shields_co)
             ] = self.atmosphere_co_abundance
 
     def calculate_column_density_towards_star(self, species: str):
@@ -101,7 +103,7 @@ class ChemistryWB2014(ChemistryModel):
         """
         Calculates the column density of a given species towards star for each self.table row
 
-        Adds two columns to the table: f"{species} number density" and f"{species} column density towards star"
+        Adds two columns to the table: f"{species} number density" and f"{species} column density upwards"
 
         Args:
             species: species to integrate
@@ -110,17 +112,15 @@ class ChemistryWB2014(ChemistryModel):
         """
         self.table[f"{species} number density"] = self.table[species] * self.table["n(H+2H2)"]
 
-        radii = set(self.table.r)
+        if not self.table.is_in_zr_regular_grid:
+            raise diskchef.engine.CHEFNotImplementedError("Implemented only for regular grids")
 
-        self.table[f"{species} column density upwards"] = 0 * u.cm ** -2
-        for r in radii:
-            indices = (self.table.r == r)
-            self.table[f"{species} column density upwards"][indices] = self.physics.column_density_to(
-                self.table.r[indices], self.table.z[indices],
-                f"{species} number density",
-                r0=r, z0=r * self.physics.zr_max,
-                only_gridpoint=True,
-            )
+        self.table[f"{species} column density upwards"] = self.physics.column_density_to(
+            np.nan * u.au, np.nan * u.au,
+            f"{species} number density",
+            r0=np.nan * u.au, z0=np.inf * u.au,
+            only_gridpoint=True,
+        )
 
         return self.table[f"{species} column density towards star"]
 
@@ -144,8 +144,8 @@ class NonzeroChemistryWB2014(ChemistryWB2014):
     1.000000e-04
     1.000000e-10
     1.000000e-10
-    1.000000e-06
-    1.000000e-04
+    1.000000e-10
+    1.000000e-10
     1.000000e-10
     """
     midplane_co_abundance: float = 1e-6
