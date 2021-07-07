@@ -69,9 +69,9 @@ class RadMCBase(MapBase):
             raise CHEFTypeError("radii_bins should be None or int, not %s (%s)", type(self.radii_bins), self.radii_bins)
 
         if self.theta_bins is None:
-            zr = np.sort(np.unique(self.table.zr))
+            zr = u.Quantity(np.sort(np.unique(self.table.zr)))
         elif isinstance(self.theta_bins, int):
-            zr = np.linspace(self.table.zr.min(), self.table.zr.max(), self.theta_bins)
+            zr = u.Quantity(np.linspace(self.table.zr.min(), self.table.zr.max(), self.theta_bins))
         else:
             raise CHEFTypeError("theta_bins should be None or int, not %s (%s)", type(self.theta_bins), self.theta_bins)
 

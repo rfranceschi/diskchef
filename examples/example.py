@@ -1,3 +1,5 @@
+import pathlib
+
 from matplotlib import pyplot as plt
 import logging
 
@@ -13,6 +15,9 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 bins = 100
+folder = pathlib.Path("example")
+folder.mkdir(parents=True, exist_ok=True)
+
 physics = WilliamsBest2014(radial_bins=bins, vertical_bins=bins)
 chem = diskchef.chemistry.scikit.SciKitChemistry(physics)
 chem.run_chemistry()
@@ -23,13 +28,13 @@ logging.getLogger('matplotlib.ticker').disabled = True
 fig, ax = plt.subplots(2, 3, sharex=True, sharey=True, figsize=(15, 10))
 physics.plot_density(axes=ax[0, 0])
 tempplot = physics.plot_temperatures(axes=ax[1, 0])
-tempplot.contours("Gas temperature", [20, 40] * u.mK * 1000)
+tempplot.contours("Gas temperature", [20, 40] * u.K)
 
 chem.plot_chemistry("CO", "HCO+", axes=ax[0, 1])
 chem.plot_chemistry("CN", "HCN", axes=ax[1, 1])
 
 coplot = chem.plot_absolute_chemistry("CO", "HCO+", axes=ax[0, 2], maxdepth=1e9)
-coplot.contours("Gas temperature", [20, 40] * u.mK * 1000, clabel_kwargs={"fmt": "T=%d K"})
+coplot.contours("Gas temperature", [20, 40] * u.K, clabel_kwargs={"fmt": "T=%d K"})
 chem.plot_absolute_chemistry("CN", "HCN", axes=ax[1, 2])
 
 fig2, ax2 = plt.subplots(2, 2, sharex=True, figsize=(10, 10))
@@ -39,5 +44,5 @@ chem.plot_column_densities(axes=ax2[1, 0], species=["CO", "CS"])
 chem.plot_column_densities(axes=ax2[0, 1], species=["CN", "HCN"])
 chem.plot_column_densities(axes=ax2[1, 1], species=["N2H+", "HCO+"])
 
-plt.show()
-print(chem)
+fig.savefig(folder / "report.pdf")
+fig2.savefig(folder / "report_coldens.pdf")
