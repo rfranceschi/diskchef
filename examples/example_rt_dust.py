@@ -12,7 +12,7 @@ from diskchef.physics.multidust import DustPopulation
 from diskchef.dust_opacity.dust_files import dust_files
 
 logging.basicConfig(
-    level=logging.DEBUG,
+    level=logging.INFO,
     format='%(asctime)s   %(name)-60s %(levelname)-8s %(message)s',
     datefmt='%m.%d.%Y %H:%M:%S',
 )

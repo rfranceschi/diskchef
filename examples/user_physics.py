@@ -1,11 +1,14 @@
 """Example of a user-written Physics subclass"""
-
-from diskchef.physics import PhysicsModel
+import pathlib
 from dataclasses import dataclass
+
 from astropy import units as u
 import numpy as np
-
 from astropy import constants as c
+from matplotlib import pyplot as plt
+
+from diskchef.physics import PhysicsModel
+from diskchef.chemistry.scikit import SciKitChemistry
 
 
 @dataclass
@@ -55,3 +58,22 @@ class MyIsothermalPhysics(PhysicsModel):
                 np.sqrt(2 * np.pi) * self.scale_height(r)
         ) * np.exp(self.slope * r / (1 * u.au)) * np.exp(
             -z ** 2 / 2 / self.scale_height(r) ** 2)).to(u.g / u.cm ** 3)
+
+if __name__ == '__main__':
+
+    folder = pathlib.Path("user_physics")
+    folder.mkdir(exist_ok=True, parents=True)
+
+    mydisk = MyIsothermalPhysics()
+    mydiskchem = SciKitChemistry(mydisk)
+    mydiskchem.run_chemistry()
+
+    fig, ax = plt.subplots(2, 2, sharex=True, sharey=True, figsize=(10, 10))
+    mydisk.plot_density(axes=ax[0, 0])
+    tempplot = mydisk.plot_temperatures(axes=ax[1, 0])
+    tempplot.contours("Gas temperature", [20] * u.K, colors="white")
+
+    coplot = mydiskchem.plot_chemistry("CO", "CS", axes=ax[0, 1])
+    coplot = mydiskchem.plot_chemistry("CN", "HCN", axes=ax[1, 1])
+
+    fig.savefig(folder / "report.pdf")

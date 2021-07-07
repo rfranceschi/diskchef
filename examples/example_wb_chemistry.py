@@ -1,3 +1,5 @@
+import pathlib
+
 from matplotlib import pyplot as plt
 import logging
 
@@ -14,6 +16,9 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 bins = 100
+folder = pathlib.Path("example_wb_chemistry")
+folder.mkdir(parents=True, exist_ok=True)
+
 physics = WilliamsBest2014(radial_bins=bins, vertical_bins=bins)
 chem = NonzeroChemistryWB2014(physics)
 chem.run_chemistry()
@@ -33,4 +38,4 @@ coplot.contours(data="H2 column density towards star", levels=[1.3e21] / u.cm **
 coplot.contours(data="H2 column density upwards", levels=[1.3e21] / u.cm ** 2, location="bottom", colors="red")
 coplot.contours("Gas temperature", [20] * u.K, colors="white")
 
-plt.show()
+fig.savefig(folder / "report.pdf")
