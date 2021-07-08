@@ -92,8 +92,15 @@ class Plot2D(Plot):
         self.axes.set_xlabel(f"{self.x_axis} {self.formatted(self.x_unit)}")
         self.axes.set_ylabel(f"{self.y_axis} {self.formatted(self.y_unit)}")
         if self.levels is None:
-            self.levels = np.logspace(np.round(np.log10(self.norm.vmin)), np.round(np.log10(self.norm.vmax)), 13)
-
+            self.levels = np.logspace(
+                np.round(np.log10(self.norm.vmin)),
+                np.round(np.log10(self.norm.vmax)),
+                13
+            )
+        else:
+            self.levels = self.levels.to_value(self.data_unit)
+        if len(set(self.levels)) == 1:
+            self.levels = self.levels[0] * np.array([0.5, 1., 2.])
         self.normalize_axes()
         im = self.axes.tricontourf(
             x_axis, y_axis,
@@ -197,8 +204,10 @@ class Plot2D(Plot):
                 self.cbar.add_lines(new_conts)
             except u.core.UnitConversionError as e:
                 self.logger.info(e)
-        conts.clabel(levels.to_value(dataunit), use_clabeltext=True, inline=True, inline_spacing=1, **clabel_kwargs)
-
+        try:
+            conts.clabel(levels.to_value(dataunit), use_clabeltext=True, inline=True, inline_spacing=1, **clabel_kwargs)
+        except ValueError as e:
+            self.logger.warning(e)
 
 @dataclass
 class Plot1D(Plot):

@@ -43,10 +43,12 @@ class ReadAndesData(ChemistryBase):
             ],
             names=["Radius", "Height"]
         )
-        if "Relative Height" in chemistry.colnames:
-            table["Height to radius"] = chemistry["Relative Height"]
-        else:
-            table["Height to radius"] = chemistry["Height"] / chemistry["Radius"]
+        # if "Relative Height" in chemistry.colnames:
+        #     table["Height to radius"] = chemistry["Relative Height"] << u.dimensionless_unscaled
+        # else:
+        #     table["Height to radius"] = (chemistry["Height"] / chemistry["Radius"]) << u.dimensionless_unscaled
+        #
+        table["Height to radius"] = table["Height"] / table["Radius"]
         table["Gas density"] = physics["Gas density"] << (u.g / u.cm ** 3)
         table["Dust density"] = physics["Dust density"] << (u.g / u.cm ** 3)
         table["Gas temperature"] = physics["Gas temperature"] << (u.K)
@@ -58,7 +60,7 @@ class ReadAndesData(ChemistryBase):
         self.physics = diskchef.physics.base.PhysicsBase(
             star_mass=config["stellar mass [MSun]"] * u.solMass,
         )
-        self.physics.table = physics
+        self.physics.table = table
 
         return table
 

@@ -3,6 +3,7 @@ from typing import Union
 import logging
 
 from astropy import units as u
+from astropy.table import QTable
 
 import diskchef.lamda
 from diskchef import CTable
@@ -67,14 +68,17 @@ class Line:
             self.levels = CTable.read(
                 levels, format='ascii', names=["Level", "Energy", "Weight", "J"],
             )
-            self.levels["Energy"].unit = 1. / u.cm
+            try:
+                self.levels["Energy"].unit = 1. / u.cm
+            except AttributeError:
+                self.levels["Energy"] *= (1. / u.cm)
             self.levels.add_index("J")
 
             lamda.readline()
             self.number_transitions = int(lamda.readline().strip())
             lamda.readline()
             transitions = [next(lamda) for i in range(self.number_transitions)]
-            self.transitions = CTable.read(
+            self.transitions = QTable.read(
                 transitions, format='ascii',
                 names=["Transition", "Up", "Low", "Einstein A", "Frequency", "Energy upper"],
             )

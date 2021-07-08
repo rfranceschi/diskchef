@@ -16,7 +16,7 @@ from diskchef.lamda.line import Line
 from diskchef.maps.radmcrt import RadMCOutput
 
 logging.basicConfig(
-    level=logging.DEBUG,
+    level=logging.INFO,
     format='%(asctime)s   %(name)-60s %(levelname)-8s %(message)s',
     datefmt='%m.%d.%Y %H:%M:%S',
 )

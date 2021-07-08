@@ -89,6 +89,7 @@ class SciKitChemistry(ChemistryBase):
             else:
                 raise CHEFRuntimeError(f"{argument} or its precursor is not found in the original data")
 
-        y = self._model.predict(np.array([self.table[col] for col in self._model.X]).T)
+        X = np.nan_to_num(np.array([self.table[col] for col in self._model.X]).T)
+        y = self._model.predict(X)
         for species, abunds in zip(self._model.y, y.T):
             self.table[species] = 10 ** abunds

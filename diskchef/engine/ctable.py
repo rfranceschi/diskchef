@@ -6,6 +6,7 @@ from contextlib import redirect_stdout
 from functools import cached_property
 from typing import Callable
 
+import astropy.table
 import numpy as np
 from astropy import units as u
 from astropy.table import QTable
@@ -86,7 +87,8 @@ class CTable(QTable):
                 column_quantity = self[item[:-len(" number density")]] * self["n(H+2H2)"]
             else:
                 raise e
-        column_quantity.name = item
+        if isinstance(column_quantity, (astropy.table.Column, u.Quantity)):
+            column_quantity.name = item
         return column_quantity
 
     @property
@@ -145,7 +147,10 @@ class CTable(QTable):
 
     def __repr__(self):
         for column in self.colnames:
-            self[column].info.format = "e"
+            try:
+                self[column].info.format = "e"
+            except ValueError:
+                pass
         with io.StringIO() as buf, redirect_stdout(buf):
             self.pprint_all()
             output = buf.getvalue()
@@ -204,10 +209,13 @@ class CTable(QTable):
 
     def check_zeros(self, column):
         """Replaces zeros in `table[column]` with the second smallest by absolute value element"""
+        values_set = sorted(set(np.abs(self[column])))
         if 0 in u.Quantity(self[column]).value:
-            values_set = sorted(set(np.abs(self[column])))
             if len(values_set) > 2:
                 self[column][self[column].value == 0] = values_set[1]
             else:
                 self[column][self[column].value == 0] = values_set[1] / 1e6
             warnings.warn("Found zeros in %s" % column)
+        # if len(values_set) == 1:
+        #     warnings.warn("%s has only one value" % column)
+        #     self[column][0] *= 0.99999
