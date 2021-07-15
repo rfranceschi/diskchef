@@ -5,8 +5,10 @@ import logging
 import warnings
 from typing import Union
 
+import diskchef.physics.ionization
 import scipy.integrate
 from astropy import units as u
+from astropy import constants
 from astropy.visualization import quantity_support
 
 import matplotlib.axes
@@ -22,7 +24,10 @@ quantity_support()
 
 @dataclass
 class PhysicsBase:
+    """Base class for disk physics models"""
     star_mass: u.solMass = 1 * u.solMass
+    xray_plasma_temperature: u.K = 1e7 * u.K
+    xray_luminosity: u.erg / u.s = 1e31 * u.erg / u.s
 
     def __post_init__(self):
         self.logger = logging.getLogger(__name__ + '.' + self.__class__.__qualname__)
@@ -31,6 +36,7 @@ class PhysicsBase:
 
     @property
     def table(self) -> CTable:
+        """Storage for all the position-dependent data of the disk"""
         return self._table
 
     @table.setter
@@ -44,6 +50,7 @@ class PhysicsBase:
             cmap: Union[matplotlib.colors.Colormap, str] = 'PuBuGn',
             **kwargs
     ) -> Plot2D:
+        """Plot 2D Gas and Dust density figures"""
         if table is None:
             table = self.table
         return Plot2D(table, axes=axes, data1="Gas density", data2="Dust density", cmap=cmap, **kwargs)
@@ -55,6 +62,7 @@ class PhysicsBase:
             cmap: Union[matplotlib.colors.Colormap, str] = 'afmhot',
             **kwargs
     ) -> Plot2D:
+        """Plot 2D Gas and Dust temperature figures"""
         if table is None:
             self.check_temperatures()
             table = self.table
@@ -66,6 +74,7 @@ class PhysicsBase:
             table: CTable = None, folder=".",
             **kwargs
     ) -> Plot1D:
+        """Plot 1D column plots of Gas and Dust density. Use the code of this method as an example."""
         if table is None:
             table = self.table
         return Plot1D(table, axes=axes, data=["Gas density", "Dust density"], **kwargs)
@@ -157,6 +166,58 @@ class PhysicsBase:
                 integral = scipy.integrate.trapz(value, k) * k_length_cm
                 integrals[i] = integral
         return u.Quantity(integrals)
+
+    def xray_bruderer(self):
+        """Calculate X-ray ionization rates using Bruderer+09 Table 3
+
+        Requires `xray_plasma_temperature` and `xray_luminosity` to be set
+        """
+        if "Total density" not in self.table.colnames:
+            self.table["Total density"] = self.table["Gas density"] + self.table["Dust density"]
+        self.table["Nucleon column density towards star"] = (self.column_density_to(
+            self.table.r, self.table.z,
+            f"Total density",
+            only_gridpoint=True,
+        ) / u.u).to(u.cm ** -2)
+
+        self.table["X ray ionization rate"] = (
+                diskchef.physics.ionization.bruderer09(
+                    self.table["Nucleon column density towards star"].to_value(u.cm ** -2),
+                    self.xray_plasma_temperature.to_value(u.K)
+                ) / u.s * (
+                        self.xray_luminosity / (4 * np.pi * self.table.r ** 2)
+                ).to_value(u.erg / u.s / u.cm ** 2)
+        ).to(1 / u.s)
+
+    def cosmic_ray_padovani18(self):
+        """Calculate CR ionization rate according to App. F model L of Padovani+2018
+
+        https://www.aanda.org/articles/aa/pdf/2018/06/aa32202-17.pdf
+        """
+        if "Total density" not in self.table.colnames:
+            self.table["Total density"] = self.table["Gas density"] + self.table["Dust density"]
+
+        if "Nucleon column density upwards" not in self.table.colnames:
+            self.table["Nucleon column density upwards"] = (self.column_density_to(
+                np.nan * u.au, np.nan * u.au,
+                f"Total density",
+                r0=np.nan * u.au, z0=np.inf * u.au,
+                only_gridpoint=True,
+            ) / u.u).to(u.cm ** -2)
+
+        density_upwards = self.table["Nucleon column density upwards"].to_value(u.cm ** -2)
+
+        midplane_i = self.table.zr == 0
+        midplane_coldens = self.table["Nucleon column density upwards"][midplane_i]
+        midplane_r = self.table.r[midplane_i]
+        midplane_dict = dict(zip(midplane_r, midplane_coldens))
+        coldens = u.Quantity([midplane_dict[r] for r in self.table.r]).to_value(u.cm ** -2)
+
+        self.table["CR ionization rate"] = 0.5 * (
+                diskchef.physics.ionization.padovani18l(np.log10(density_upwards)) +
+                diskchef.physics.ionization.padovani18l(
+                    np.log10(2 * coldens - density_upwards))
+        ) / u.s
 
 
 @dataclass

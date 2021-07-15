@@ -20,22 +20,23 @@ class WilliamsBest2014(ParametrizedPhysics):
     >>> # Initializing physics class with default parameters
     >>> physics = WilliamsBest2014()
     >>> physics  # doctest: +NORMALIZE_WHITESPACE
-    WilliamsBest2014(star_mass=<Quantity 1. solMass>, r_min=<Quantity 0.1 AU>, r_max=<Quantity 500. AU>,
+    WilliamsBest2014(star_mass=<Quantity 1. solMass>, xray_plasma_temperature=<Quantity 10000000. K>,
+                     xray_luminosity=<Quantity 1.e+31 erg / s>, r_min=<Quantity 0.1 AU>, r_max=<Quantity 500. AU>,
                      zr_max=0.7, radial_bins=100, vertical_bins=100, dust_to_gas=0.01,
                      gas_mass=<Quantity 0.001 solMass>, tapering_radius=<Quantity 100. AU>,
                      tapering_gamma=0.75, midplane_temperature_1au=<Quantity 200. K>,
-                     atmosphere_temperature_1au=<Quantity 1000. K>, temperature_slope=0.55,
-                     mean_molecular_mass=<Quantity 2.33 g / mol>, inner_radius=<Quantity 1. AU>,
-                     inner_depletion=1e-06)
+                      atmosphere_temperature_1au=<Quantity 1000. K>, temperature_slope=0.55,
+                      molar_mass=<Quantity 2.33 g / mol>, inner_radius=<Quantity 1. AU>, inner_depletion=1e-06)
     >>> # Defaults can be overridden
     >>> WilliamsBest2014(star_mass=2 * u.solMass, r_max=200 * u.au)  # doctest: +NORMALIZE_WHITESPACE
-    WilliamsBest2014(star_mass=<Quantity 2. solMass>, r_min=<Quantity 0.1 AU>, r_max=<Quantity 200. AU>,
-                     zr_max=0.7, radial_bins=100, vertical_bins=100, dust_to_gas=0.01,
-                     gas_mass=<Quantity 0.001 solMass>, tapering_radius=<Quantity 100. AU>,
-                     tapering_gamma=0.75, midplane_temperature_1au=<Quantity 200. K>,
-                     atmosphere_temperature_1au=<Quantity 1000. K>, temperature_slope=0.55,
-                     mean_molecular_mass=<Quantity 2.33 g / mol>, inner_radius=<Quantity 1. AU>,
+    WilliamsBest2014(star_mass=<Quantity 2. solMass>, xray_plasma_temperature=<Quantity 10000000. K>,
+                     xray_luminosity=<Quantity 1.e+31 erg / s>, r_min=<Quantity 0.1 AU>,
+                     r_max=<Quantity 200. AU>, zr_max=0.7, radial_bins=100, vertical_bins=100, dust_to_gas=0.01,
+                     gas_mass=<Quantity 0.001 solMass>, tapering_radius=<Quantity 100. AU>, tapering_gamma=0.75,
+                     midplane_temperature_1au=<Quantity 200. K>, atmosphere_temperature_1au=<Quantity 1000. K>,
+                     temperature_slope=0.55, molar_mass=<Quantity 2.33 g / mol>, inner_radius=<Quantity 1. AU>,
                      inner_depletion=1e-06)
+
     >>> # Generate physics on 3x3 grid
     >>> physics_small_grid = WilliamsBest2014(vertical_bins=3, radial_bins=3)
     >>> # table attribute stores the table with the model. Called first time, calculates the table
@@ -66,7 +67,7 @@ class WilliamsBest2014(ParametrizedPhysics):
     midplane_temperature_1au: u.K = 200 * u.K
     atmosphere_temperature_1au: u.K = 1000 * u.K
     temperature_slope: float = 0.55
-    mean_molecular_mass: u.kg / u.mol = 2.33 * u.g / u.mol
+    molar_mass: u.kg / u.mol = 2.33 * u.g / u.mol
     inner_radius: u.au = 1 * u.au
     inner_depletion: float = 1e-6
 
@@ -91,7 +92,7 @@ class WilliamsBest2014(ParametrizedPhysics):
         pressure_scalehight = (
                 (
                         const.R * temp_midplane * r ** 3 /
-                        (const.G * self.star_mass * self.mean_molecular_mass)
+                        (const.G * self.star_mass * self.molar_mass)
                 ) ** 0.5
         ).to(u.au)
         temperature = np.zeros_like(z).value << u.K
@@ -157,7 +158,7 @@ class WilliamsBest2014(ParametrizedPhysics):
         dlntdz[:-1] = (t[1:] - t[:-1]) / (z[1:] - z[:-1]) / (t[:-1])
         return -(
                 const.G * self.star_mass * z / (r ** 2 + z ** 2) ** 1.5
-                * self.mean_molecular_mass / const.R / t
+                * self.molar_mass / const.R / t
                 + dlntdz
         ).to(1 / u.au)
 
