@@ -61,7 +61,7 @@ class MyIsothermalPhysics(PhysicsModel):
 
 if __name__ == '__main__':
 
-    folder = pathlib.Path("user_physics")
+    folder = pathlib.Path("example_user_physics")
     folder.mkdir(exist_ok=True, parents=True)
 
     mydisk = MyIsothermalPhysics()

@@ -185,7 +185,7 @@ class PhysicsBase:
                     self.table["Nucleon column density towards star"].to_value(u.cm ** -2),
                     self.xray_plasma_temperature.to_value(u.K)
                 ) / u.s * (
-                        self.xray_luminosity / (4 * np.pi * self.table.r ** 2)
+                        self.xray_luminosity / (4 * np.pi * (self.table.r ** 2 + self.table.z ** 2))
                 ).to_value(u.erg / u.s / u.cm ** 2)
         ).to(1 / u.s)
 
@@ -193,6 +193,8 @@ class PhysicsBase:
         """Calculate CR ionization rate according to App. F model L of Padovani+2018
 
         https://www.aanda.org/articles/aa/pdf/2018/06/aa32202-17.pdf
+
+        TODO: what is about magnetic fields?
         """
         if "Total density" not in self.table.colnames:
             self.table["Total density"] = self.table["Gas density"] + self.table["Dust density"]

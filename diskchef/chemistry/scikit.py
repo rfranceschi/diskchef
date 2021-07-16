@@ -15,6 +15,8 @@ from diskchef.chemistry.base import ChemistryBase
 from diskchef.physics.williams_best import WilliamsBest2014
 from diskchef.engine.exceptions import CHEFNotImplementedError, CHEFRuntimeError
 
+DRAINE_UV_FIELD = 2.6e-6 * u.W / u.m ** 2
+
 
 @dataclass
 class SciKitChemistry(ChemistryBase):
@@ -85,6 +87,11 @@ class SciKitChemistry(ChemistryBase):
                 )
             elif argument == "log(temperature)":
                 self.table["log(temperature)"] = np.log10(self.table["Gas temperature"].to(u.K).value)
+            elif argument == "log(uv)":
+                self.table["log(uv)"] = np.log10(
+                    (self.table["UV radiation strength"] / DRAINE_UV_FIELD).to_value(u.dimensionless_unscaled))
+            elif argument == "log(ionization)":
+                self.table["log(ionization)"] = np.log10(self.table["Ionization rate"].to(1 / u.s).value)
             else:
                 raise CHEFRuntimeError(f"{argument} or its precursor is not found in the original data")
 

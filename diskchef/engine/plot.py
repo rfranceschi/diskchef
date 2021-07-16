@@ -67,11 +67,12 @@ class Plot2D(Plot):
     cmap: Union[matplotlib.colors.Colormap, str] = None
     multiply_by: Union[str, float] = 1.
     levels: u.Quantity = None
+    desired_max: u.Quantity = None
 
     def __post_init__(self):
         super().__post_init__()
         if self.norm is None:
-            self.norm = LogNormMaxOrders(maxdepth=self.maxdepth)
+            self.norm = LogNormMaxOrders(vmax=self.desired_max, maxdepth=self.maxdepth)
 
         try:
             self.multiply_by = self.table[self.multiply_by]
@@ -208,6 +209,7 @@ class Plot2D(Plot):
             conts.clabel(levels.to_value(dataunit), use_clabeltext=True, inline=True, inline_spacing=1, **clabel_kwargs)
         except ValueError as e:
             self.logger.warning(e)
+
 
 @dataclass
 class Plot1D(Plot):
