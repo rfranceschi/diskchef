@@ -25,10 +25,11 @@ class ChemistryBase:
         self.logger = logging.getLogger(__name__ + '.' + self.__class__.__qualname__)
         self.logger.info("Creating an instance of %s", self.__class__.__qualname__)
         self.logger.debug("With parameters: %s", self.__dict__)
-        try:
-            self.update_hydrogen_atom_number_density()
-        except KeyError as e:
-            self.logger.warning("'Gas density' is not defined in physics.table of %s: %s", self.physics, e)
+        if self.physics is not None:
+            try:
+                self.update_hydrogen_atom_number_density()
+            except KeyError as e:
+                self.logger.warning("'Gas density' is not defined in physics.table of %s: %s", self.physics, e)
 
     @property
     def table(self):

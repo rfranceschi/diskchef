@@ -44,12 +44,15 @@ class RadMCBase(MapBase):
     theta_bins: Union[None, int] = None
     outer_radius: Union[None, u.Quantity] = None
     verbosity: int = 0
-    wavelengths: u.Quantity = field(default=np.geomspace(0.1, 1000, 100) * u.um)
+    wavelengths: u.Quantity = field(default=np.geomspace(0.0912, 1000, 100) * u.um)
     modified_random_walk: bool = True
     scattering_mode_max: int = None
     nphot_therm: int = None
+    nphot_mono: int = None
+    nphot_spec: int = None
     coordinate: Union[str, SkyCoord] = None
-    external_source_type: Literal[None, "Draine1978"] = None
+    external_source_type: Literal["Draine1978", "WeingartnerDraine2001", "None"] = None
+    external_source_multiplier: float = 1
 
     def __post_init__(self):
         super().__post_init__()
@@ -153,6 +156,10 @@ class RadMCBase(MapBase):
                 print("modified_random_walk = 1", file=file)
             if self.nphot_therm is not None:
                 print(f"nphot_therm = {int(self.nphot_therm)}", file=file)
+            if self.nphot_mono is not None:
+                print(f"nphot_mono = {int(self.nphot_mono)}", file=file)
+            if self.nphot_spec is not None:
+                print(f"nphot_spec = {int(self.nphot_spec)}", file=file)
 
     def wavelength_micron(self, out_file: PathLike = None) -> None:
         """Creates a `wavelength_micron.inp` file"""
@@ -166,10 +173,12 @@ class RadMCBase(MapBase):
 
     def external_source(self, out_file: PathLike = None) -> None:
         """Creates an `external_source.inp` file"""
-        if self.external_source_type is None:
+        if self.external_source_type is None or self.external_source_type == "None":
             return
         elif self.external_source_type == "Draine1978":
             isrf = diskchef.maps.radiation_fields.draine1978
+        elif self.external_source_type == "WeingartnerDraine2001":
+            isrf = diskchef.maps.radiation_fields.weingartner_draine_2001
         else:
             raise CHEFNotImplementedError("Unsupported ISRF")
 
@@ -182,8 +191,9 @@ class RadMCBase(MapBase):
             print('\n'.join(f"{entry.to(u.um).value:.7e}" for entry in self.wavelengths), file=file)
             print(
                 '\n'.join(
-                    f"{entry.to(u.erg / u.cm ** 2 / u.s / u.Hz / u.sr).value:.7e}"
-                    for entry in isrf(self.wavelengths)),
+                    f"{entry:.7e}"
+                    for entry in self.external_source_multiplier * isrf(self.wavelengths).to(
+                        u.erg / u.cm ** 2 / u.s / u.Hz / u.sr).value),
                 file=file)
 
     def amr_grid(self, out_file: PathLike = None) -> None:

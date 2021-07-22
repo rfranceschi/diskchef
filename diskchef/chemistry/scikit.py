@@ -12,10 +12,9 @@ import sklearn
 
 from diskchef.engine.other import PathLike
 from diskchef.chemistry.base import ChemistryBase
+from diskchef.maps.radiation_fields import DRAINE_UV_FIELD, WEINGARTNER_DRAINE_ISRF, ANDES2_G0
 from diskchef.physics.williams_best import WilliamsBest2014
 from diskchef.engine.exceptions import CHEFNotImplementedError, CHEFRuntimeError
-
-DRAINE_UV_FIELD = 2.6e-6 * u.W / u.m ** 2
 
 
 @dataclass
@@ -89,7 +88,7 @@ class SciKitChemistry(ChemistryBase):
                 self.table["log(temperature)"] = np.log10(self.table["Gas temperature"].to(u.K).value)
             elif argument == "log(uv)":
                 self.table["log(uv)"] = np.log10(
-                    (self.table["UV radiation strength"] / DRAINE_UV_FIELD).to_value(u.dimensionless_unscaled))
+                    (self.table["UV radiation strength"]).to_value(ANDES2_G0))
             elif argument == "log(ionization)":
                 self.table["log(ionization)"] = np.log10(self.table["Ionization rate"].to(1 / u.s).value)
             else:

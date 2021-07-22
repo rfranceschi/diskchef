@@ -68,6 +68,7 @@ class Plot2D(Plot):
     multiply_by: Union[str, float] = 1.
     levels: u.Quantity = None
     desired_max: u.Quantity = None
+    norm_lower: bool = False
 
     def __post_init__(self):
         super().__post_init__()
@@ -84,8 +85,14 @@ class Plot2D(Plot):
 
         data1_q = u.Quantity(self.table[self.data1] * self.multiply_by)
         data1 = data1_q.value
-        self.data_unit = data1_q.unit
-        self.norm(data1)
+        if self.norm_lower:
+            data2_q = u.Quantity(self.table[self.data2] * self.multiply_by)
+            self.data_unit = data2_q.unit
+            data2 = data2_q.value
+            self.norm(data2)
+        else:
+            self.data_unit = data1_q.unit
+            self.norm(data1)
         x_axis = self.table[self.x_axis].value
         y_axis = self.table[self.y_axis].value
         self.x_unit = self.table[self.x_axis].unit

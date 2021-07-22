@@ -28,7 +28,7 @@ logger = logging.getLogger(__name__)
 logging.getLogger('matplotlib.font_manager').disabled = True
 logging.getLogger('matplotlib.ticker').disabled = True
 bins = 100
-folder = pathlib.Path("example_ionization")
+folder = pathlib.Path("example_ionization_noisrf")
 folder.mkdir(parents=True, exist_ok=True)
 
 physics_for_full_chemistry = WilliamsBest2014(radial_bins=bins, vertical_bins=bins)
@@ -49,13 +49,10 @@ dust = diskchef.physics.multidust.DustPopulation(diskchef.dust_opacity.dust_file
 dust.write_to_table()
 
 radmc = diskchef.maps.RadMCThermMono(
-    # star_effective_temperature=2.7*u.K,
     chemistry=full_chemistry,
     folder=folder,
     scattering_mode_max=1,
-    external_source_type="WeingartnerDraine2001",
-    nphot_therm=int(1e7),
-    nphot_mono=int(1e6),
+    # external_source_type="WeingartnerDraine2001",
     accretion_luminosity=0.1 * u.solLum,
 )
 radmc.create_files()

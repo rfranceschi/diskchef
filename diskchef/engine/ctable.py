@@ -4,7 +4,7 @@ import warnings
 import io
 from contextlib import redirect_stdout
 from functools import cached_property
-from typing import Callable
+from typing import Callable, Literal, Union
 
 import astropy.table
 import numpy as np
@@ -105,22 +105,32 @@ class CTable(QTable):
     def zr(self):
         return self['Height to radius']
 
-    def interpolate(self, column: str) -> Callable[[u.Quantity, u.Quantity], u.Quantity]:
+    def interpolate(
+            self,
+            column: str,
+            method: Literal['linear', 'nearest', 'cubic'] = 'linear',
+            rescale: bool = False,
+            fill_value: float = 0.0
+    ) -> Callable[[u.Quantity, u.Quantity], u.Quantity]:
         """
         Interpolate the selected quantity
         Args:
             column: str -- column name of the table to interpolate
+            method: to be passed to scipy.interpolation.griddata
+            rescale: to be passed to scipy.interpolation.griddata
+            fill_value: to be passed to scipy.interpolation.griddata
 
         Returns: callable(r, z) with interpolated value of column
         """
 
-        # TODO non-linear interpolation
         def _interpolation(r: u.au, z: u.au):
             interpolated = griddata(
                 points=(self.r.to(u.au).value, self.z.to(u.au).value),
                 values=self[column],
                 xi=(r.to(u.au).value, z.to(u.au).value),
-                fill_value=0
+                method=method,
+                rescale=rescale,
+                fill_value=fill_value
             )
             if self[column].unit:
                 interpolated = interpolated << self[column].unit
@@ -131,11 +141,9 @@ class CTable(QTable):
     @cached_property
     def is_in_zr_regular_grid(self) -> bool:
         """
-        Returns: whether the table has same number of relative heights
+        Returns: whether the table is on a grid of R and Z/R
         """
-        zr_set = set(self.zr)
-        lengths = [len(np.argwhere(self.zr == zr_set))]
-        return len(set(lengths)) == 1
+        return len(set(self.r)) * len(set(self.zr)) == len(self)
 
     def add_row(self, vals=None, mask=None):
         """
@@ -207,15 +215,23 @@ class CTable(QTable):
         else:
             raise NotImplementedError("Column density is currently only implemented for zr grids")
 
-    def check_zeros(self, column):
+    def check_zeros(self, column, nearest=True):
         """Replaces zeros in `table[column]` with the second smallest by absolute value element"""
         values_set = sorted(set(np.abs(self[column])))
         if 0 in u.Quantity(self[column]).value:
-            if len(values_set) > 2:
-                self[column][self[column].value == 0] = values_set[1]
-            else:
-                self[column][self[column].value == 0] = values_set[1] / 1e6
             warnings.warn("Found zeros in %s" % column)
-        # if len(values_set) == 1:
-        #     warnings.warn("%s has only one value" % column)
-        #     self[column][0] *= 0.99999
+            index = self[column].value == 0
+            if nearest:
+                data = self[column][~index]
+                self[column] = griddata(
+                    points=(self.r[~index].to(u.au).value, self.z[~index].to(u.au).value),
+                    values=data,
+                    xi=(self.r.to(u.au).value, self.z.to(u.au).value),
+                    method="nearest",
+                ) << self[column].unit
+
+            else:
+                if len(values_set) > 2:
+                    self[column][index] = values_set[1]
+                else:
+                    self[column][index] = values_set[1] / 1e6
