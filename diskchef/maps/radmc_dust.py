@@ -4,11 +4,13 @@ import time
 import shutil
 import re
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Union
 
+import diskchef.engine.exceptions
 import numpy as np
 from astropy import units as u
+from astropy import constants as c
 
 import diskchef.physics.yorke_bodenheimer
 from diskchef.engine.other import PathLike
@@ -19,6 +21,8 @@ from diskchef.maps.radmcrt import RadMCBase
 class RadMCTherm(RadMCBase):
     star_radius: Union[None, u.Quantity] = None
     star_effective_temperature: Union[None, u.Quantity] = None
+    accretion_luminosity: Union[None, u.Quantity] = None
+    accretion_temperature: Union[None, u.Quantity] = 2e4 * u.K
 
     def __post_init__(self):
         super().__post_init__()
@@ -47,20 +51,41 @@ class RadMCTherm(RadMCBase):
         self.dustopac()
         self.dust_density()
         self.stars()
+        self.external_source()
 
     def stars(self, out_file: PathLike = None) -> None:
         """Writes the `stars.inp` file"""
         if out_file is None:
             out_file = os.path.join(self.folder, 'stars.inp')
         with open(out_file, 'w') as file:
-            print('2', file=file)  # Typically 2 at present
-            print(f'1 {len(self.wavelengths)}', file=file)  # number of stars, wavelengths
-            print(f'{self.star_radius.to(u.cm).value} '
-                  f'{self.chemistry.physics.star_mass.to(u.g).value} '
-                  f'0 0 0',
-                  file=file)
-            print('\n'.join(f"{entry.to(u.um).value:.7e}" for entry in self.wavelengths), file=file)
-            print(-self.star_effective_temperature.to(u.K).value, file=file)
+            if self.accretion_luminosity is None:
+                print('2', file=file)  # Typically 2 at present
+                print(f'1 {len(self.wavelengths)}', file=file)  # number of stars, wavelengths
+                print(f'{self.star_radius.to(u.cm).value} '
+                      f'{self.chemistry.physics.star_mass.to(u.g).value} '
+                      f'0 0 0',
+                      file=file)
+                print('\n'.join(f"{entry:.7e}" for entry in self.wavelengths.to_value(u.um)), file=file)
+                print(-self.star_effective_temperature.to(u.K).value, file=file)
+            else:
+                print('2', file=file)  # Typically 2 at present
+                print(f'2 {len(self.wavelengths)}', file=file)
+                print(f'{self.star_radius.to(u.cm).value} '
+                      f'{self.chemistry.physics.star_mass.to(u.g).value} '
+                      f'0 0 0',
+                      file=file)
+                print(f'{self.accretion_effective_radius.to_value(u.cm)} '
+                      f'0 '
+                      f'0 0 0',
+                      file=file)
+                print('\n'.join(f"{entry:.7e}" for entry in self.wavelengths.to_value(u.um)), file=file)
+                print(-self.star_effective_temperature.to(u.K).value, file=file)
+                print(-self.accretion_temperature.to(u.K).value, file=file)
+
+    @property
+    def accretion_effective_radius(self):
+        return np.sqrt(self.accretion_luminosity / (
+                4 * np.pi * c.sigma_sb * self.accretion_temperature ** 4)).cgs
 
     def dustopac(self, out_file: PathLike = None) -> None:
         """Writes the `dustopac.inp` file"""
@@ -146,3 +171,78 @@ class RadMCTherm(RadMCBase):
         self.interpolate_back("RadMC Dust temperature")
         self.table["Original Dust temperature"] = self.table["Dust temperature"]
         self.table["Dust temperature"] = self.table["RadMC Dust temperature"]
+        self.table.check_zeros("Dust temperature")
+
+
+@dataclass
+class RadMCThermMono(RadMCTherm):
+    """Class to run `radmc3d mctherm` and `radmc3d mcmono` one after another"""
+    wavelengths: u.Quantity = field(default=np.geomspace(0.01, 1000, 125) * u.um)
+    mcmono_wavelengths: u.Quantity = field(default=np.geomspace(0.0912, 0.2, 20) * u.um)
+
+    @u.quantity_input
+    def run(
+            self,
+            inclination: u.deg = 0 * u.deg, position_angle: u.deg = 0 * u.deg,
+            distance: u.pc = 140 * u.pc, velocity_offset: u.km / u.s = 0 * u.km / u.s,
+            threads: int = 1, npix: int = 100,
+    ) -> None:
+        super().run(
+            inclination=inclination, position_angle=position_angle,
+            distance=distance, velocity_offset=velocity_offset,
+            threads=threads, npix=npix
+        )
+
+        self.logger.info("Running radmc3d")
+        start = time.time()
+        command = (f"{self.executable} mcmono "
+                   f"setthreads {threads} "
+                   )
+        self.logger.info("Running radmc3d for radiation field: %s", command)
+        proc = subprocess.run(
+            command,
+            cwd=self.folder,
+            text=True,
+            capture_output=True,
+            shell=True
+        )
+        self.logger.info("radmc3d finished after %s", timedelta(seconds=time.time() - start))
+        self.catch_radmc_messages(proc)
+
+    def mcmono_wavelength_micron(self, out_file: PathLike = None) -> None:
+        """Creates a `mcmono_wavelength_micron.inp` file"""
+
+        if out_file is None:
+            out_file = os.path.join(self.folder, 'mcmono_wavelength_micron.inp')
+
+        with open(out_file, 'w') as file:
+            print(len(self.mcmono_wavelengths), file=file)
+            print('\n'.join(f"{entry.to(u.um).value:.7e}" for entry in self.mcmono_wavelengths), file=file)
+
+    def create_files(self) -> None:
+        super().create_files()
+        self.mcmono_wavelength_micron()
+
+    def read_radiation_strength(self) -> None:
+        """Read RadMC3D mcmono radiation strength output into `table`"""
+        radiation = np.loadtxt(
+            os.path.join(self.folder, "mean_intensity.out"), skiprows=4
+        ).reshape(-1, len(self.mcmono_wavelengths), order="F") << (u.erg / u.s / u.cm ** 2 / u.Hz / u.sr)
+
+        self.polar_table["Radiation strength"] = np.abs(
+            4 * np.pi * u.sr * np.trapz(
+                radiation, self.mcmono_wavelengths.to(u.Hz, equivalencies=u.spectral()),
+                axis=1)
+        ).to(u.erg / u.s / u.cm ** 2)
+
+        number_of_zeroes = np.sum(radiation == 0)
+        if number_of_zeroes != 0:
+            self.logger.warning("RadMC never achieved %d points. "
+                                "Recalculate with higher nphot_therm "
+                                "and/or remove high-density regions "
+                                "out of the model grid "
+                                "(highly likely, you can forfeit radii ~< 1 au). ", number_of_zeroes)
+
+        self.interpolate_back("Radiation strength")
+        self.table["Radiation strength"][self.table["Radiation strength"] < 0] = 0
+        self.table.check_zeros("Radiation strength")

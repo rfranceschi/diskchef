@@ -21,4 +21,4 @@ Important:
 """
 from diskchef.maps.radmcrt import RadMCVisualize
 from diskchef.maps.radmc_lines import RadMCRT, RadMCRTSingleCall
-from diskchef.maps.radmc_dust import RadMCTherm
+from diskchef.maps.radmc_dust import RadMCTherm, RadMCThermMono

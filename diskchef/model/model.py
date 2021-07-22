@@ -232,7 +232,7 @@ class Model:
             pixel_area = astropy.wcs.utils.proj_plane_pixel_area(scube.wcs.celestial) * pixel_area_units
 
             spectrum = (scube * pixel_area).to(u.mJy).sum(axis=(1, 2))  # 1d spectrum in Jy
-            flux = np.trapz(scube.spectral_axis, spectrum)
+            flux = np.abs(np.trapz(spectrum, scube.spectral_axis))
             tbl = astropy.table.QTable(
                 [scube.spectral_axis, u.Quantity(spectrum)],
                 meta={"flux": flux},
