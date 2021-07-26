@@ -16,6 +16,7 @@ import matplotlib.axes
 import matplotlib.scale
 import matplotlib.colors
 from matplotlib import pyplot as plt
+from matplotlib.ticker import LogFormatterMathtext
 
 from diskchef import CTable
 from diskchef.engine.other import LogNormMaxOrders
@@ -100,9 +101,17 @@ class Plot2D(Plot):
         self.axes.set_xlabel(f"{self.x_axis} {self.formatted(self.x_unit)}")
         self.axes.set_ylabel(f"{self.y_axis} {self.formatted(self.y_unit)}")
         if self.levels is None:
+            minlevel = np.round(np.log10(self.norm.vmin))
+            maxlevel = np.round(np.log10(self.norm.vmax))
+            if maxlevel - minlevel == 1:
+                self.cbar_formatter = LogFormatterMathtext()
+                minlevel = np.round(np.log10(self.norm.vmin), 1)
+                maxlevel = np.round(np.log10(self.norm.vmax), 1)
+            else:
+                self.cbar_formatter = None
             self.levels = np.logspace(
-                np.round(np.log10(self.norm.vmin)),
-                np.round(np.log10(self.norm.vmax)),
+                minlevel,
+                maxlevel,
                 13
             )
         else:
@@ -140,6 +149,7 @@ class Plot2D(Plot):
             im.set_clim(self.norm.vmin, self.norm.vmax)
             self.cbar = self.axes.figure.colorbar(
                 im, ax=self.axes,
+                format=self.cbar_formatter
             )
             self.cbar.set_label(self.formatted(data1_q.unit), rotation="horizontal")
             self.cbar.ax.minorticks_off()
