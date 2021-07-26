@@ -1,5 +1,6 @@
 import logging
 from astropy import units as u
+from diskchef.engine.plot import Plot2D
 
 from matplotlib import pyplot as plt
 
@@ -46,15 +47,8 @@ chem.run_chemistry()
 chem.table['13CO'] = chem.table['CO'] / 77
 chem.table['C18O'] = chem.table['CO'] / 560
 
-chem.physics.plot_density()
+fig, ax = plt.subplots(2, figsize=(5, 10))
+chem.physics.plot_density(axes=ax[0])
+Plot2D(chem.table, axes=ax[1], data1="RadMC Dust temperature", data2="Original Dust temperature")
 
-dvn = Divan()
-dvn.physical_structure = chem.table
-dvn.generate_figure_volume_densities(extra_gas_to_dust=100)
-dvn.generate_figure_temperatures()
-dvn.generate_figure_temperatures(
-    r=map.polar_table.r, z=map.polar_table.z,
-    gas_temperature=map.polar_table["RadMC Dust temperature"],
-    dust_temperature=map.polar_table["Dust temperature"]
-)
-dvn.save_figures_pdf("example_dust/figs.pdf")
+fig.savefig("example_dust/figs.pdf")

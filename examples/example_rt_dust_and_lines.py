@@ -51,9 +51,11 @@ chem.run_chemistry()
 chem.table['13CO'] = chem.table['CO'] / 77
 chem.table['C18O'] = chem.table['CO'] / 560
 
-physics.plot_density(folder=folder)
-chem.plot_chemistry(folder=folder)
-chem.plot_h2_coldens(folder=folder)
+fig, ax = plt.subplots(2, 2, figsize=(10, 10))
+physics.plot_density(axes=ax[0, 0])
+physics.plot_temperatures(axes=ax[0, 1])
+chem.plot_chemistry(axes=ax[1, 0], species1="CO", species2="HCO+")
+chem.plot_chemistry(axes=ax[1, 1], species1="CN", species2="HCN")
 
 radmc = RadMCRTSingleCall(
     chemistry=chem, line_list=[

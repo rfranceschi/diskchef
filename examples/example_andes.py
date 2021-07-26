@@ -33,7 +33,7 @@ if __name__ == '__main__':
     fig_main, ax_main = plt.subplots(1, len(line_list), figsize=(5 * len(line_list), 5))
 
     for fileindex in [5]:
-        chem = ReadAndesData(folder='example_andes/data', index=fileindex)
+        chem = ReadAndesData(folder='example_andes_input/data', index=fileindex)
         chem.table['13CO'] = chem.table['CO'] / 70
         chem.table['C18O'] = chem.table['CO'] / 550
         chem.table['pH2CO'] = chem.table['H2CO'] / 4
