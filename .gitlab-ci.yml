@@ -11,6 +11,7 @@ cache:
 before_script:
   - python -V               # Print out python version for debugging
   - apt update && apt install -y gfortran
+  - pip install cython
   - conda install -y -c conda-forge galario
   - pip install .
 
@@ -33,6 +34,8 @@ pages:
   artifacts:
     paths:
       - public
+  only:
+    - master
 
 # pylint:
 #   stage: test
