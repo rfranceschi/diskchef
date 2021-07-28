@@ -124,7 +124,7 @@ if __name__ == '__main__':
     sampler = ultranest.ReactiveNestedSampler(parameters, my_likelihood, prior_transform,
                                               log_dir = 'testlog', resume=True)
 
-    result = sampler.run(max_ncalls=10, min_num_live_points=10, cluster_num_live_points=5)
+    result = sampler.run(max_ncalls=100, min_num_live_points=10, cluster_num_live_points=5)
 
     paramnames = result['paramnames']
     data = np.array(result['weighted_samples']['points'])
