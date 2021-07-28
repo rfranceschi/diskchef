@@ -23,6 +23,7 @@ setup(
         'emcee',
         'corner',
         'ultranest',
+        'h5py',
     ],
     version_config=True,
     setup_requires=['setuptools-git-versioning'],
