@@ -36,6 +36,15 @@ class Fitter:
     threads: int = None
     progress: bool = False
 
+    def lnprob_fixed(self, *args, **kwargs):
+        """Decorates self.lnprob so that minimum and maximum from self.parameters are considered"""
+        for parameter, arg in zip(self.parameters, *args):
+            if (parameter.min is not None) and (parameter.min > arg):
+                return -np.inf
+            if (parameter.max is not None) and (parameter.max < arg):
+                return -np.inf
+        return self.lnprob(*args, **kwargs)
+
     def __post_init__(self):
         self._table = None
 
@@ -78,11 +87,11 @@ class BruteForceFitter(Fitter):
         tbl = QTable(np.array([comb for comb in all_parameter_combinations]),
                      names=[par.name for par in self.parameters])
         if self.threads != 1:
-            lnprob = partial(self.lnprob, *args, **kwargs)
+            lnprob = partial(self.lnprob_fixed, *args, **kwargs)
             with Pool(self.threads) as pool:
                 tbl["lnprob"] = pool.map(lnprob, tbl)
         else:
-            tbl["lnprob"] = [self.lnprob(parameters, *args, **kwargs) for parameters in tbl]
+            tbl["lnprob"] = [self.lnprob_fixed(parameters, *args, **kwargs) for parameters in tbl]
         self._table = tbl
         return tbl[np.argmax(tbl["lnprob"])]
 
@@ -105,7 +114,8 @@ class EMCEEFitter(Fitter):
         else:
             pool = None
 
-        sampler = EnsembleSampler(self.nwalkers, len(self.parameters), self.lnprob, args=args, kwargs=kwargs, pool=pool)
+        sampler = EnsembleSampler(self.nwalkers, len(self.parameters), self.lnprob_fixed, args=args, kwargs=kwargs,
+                                  pool=pool)
         sampler.run_mcmc(pos0, self.nsteps, progress=self.progress)
         if pool is not None:
             pool.close()
@@ -123,6 +133,10 @@ class UltraNestFitter(Fitter):
     resume: Literal['resume', 'overwrite', 'subfolder'] = 'overwrite'
     log_dir: Union[str, Path] = None
 
+    def lnprob_fixed(self, *args, **kwargs):
+        return np.nan_to_num(super().lnprob_fixed(*args, **kwargs))
+
+
     def fit(
             self,
             *args, **kwargs
@@ -135,7 +149,7 @@ class UltraNestFitter(Fitter):
             self.log_dir = Path("ultranest")
         else:
             self.log_dir = Path(self.log_dir)
-        lnprob = partial(self.lnprob, *args, **kwargs)
+        lnprob = partial(self.lnprob_fixed, *args, **kwargs)
         lnprob.__name__ = self.lnprob.__name__
         sampler = ultranest.ReactiveNestedSampler(
             [param.name for param in self.parameters],
