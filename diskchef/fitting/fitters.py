@@ -1,7 +1,9 @@
 """Brut-force fitter for diskchef"""
+import os
 from dataclasses import dataclass
 from functools import partial
 from multiprocessing import Pool
+from pathlib import Path
 from typing import Callable, List, Union, Literal
 from itertools import product, cycle, zip_longest
 
@@ -119,6 +121,7 @@ class UltraNestFitter(Fitter):
     nsteps: int = 100
     transform: Callable = None
     resume: Literal['resume', 'overwrite', 'subfolder'] = 'overwrite'
+    log_dir: Union[str, Path] = None
 
     def fit(
             self,
@@ -128,23 +131,28 @@ class UltraNestFitter(Fitter):
             pool = Pool(self.threads)
         else:
             pool = None
-
+        if self.log_dir is None:
+            self.log_dir = Path("ultranest")
+        else:
+            self.log_dir = Path(self.log_dir)
         lnprob = partial(self.lnprob, *args, **kwargs)
         lnprob.__name__ = self.lnprob.__name__
         sampler = ultranest.ReactiveNestedSampler(
             [param.name for param in self.parameters],
             lnprob,
             self.transform,
-            log_dir="myanalysis",
+            log_dir=self.log_dir,
             resume=True,
+            storage_backend='csv'
         )
-        result = sampler.run()
+        if pool is None:
+            sampler.run()
         if pool is not None:
+            pool.map(sampler.run, [None] * min([self.threads, os.cpu_count()]))
             pool.close()
         sampler.plot_run()
         sampler.plot_trace()
         sampler.plot_corner()
-
 
         # tbl = QTable(sampler.flatchain, names=[par.name for par in self.parameters])
         # tbl["lnprob"] = sampler.flatlnprobability

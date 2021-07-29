@@ -21,6 +21,12 @@ from diskchef.physics.multidust import DustPopulation
 from diskchef.physics.williams_best import WilliamsBest2014
 from diskchef.engine.other import PathLike
 
+import warnings
+from spectral_cube.utils import SpectralCubeWarning
+
+warnings.filterwarnings(action='ignore', category=SpectralCubeWarning,
+                        append=True)
+
 
 @dataclass
 class BaseModel:

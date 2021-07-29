@@ -75,8 +75,13 @@ def test_linear_emcee(threads):
     bestfit = fitter.fit(x=x, y=y)
     assert bestfit["a"], bestfit["b"] == pytest.approx([1, 2])
 
-
-def test_linear_ultranest():
+@pytest.mark.parametrize(
+    "threads",
+    [
+        1, 2,
+    ]
+)
+def test_linear_ultranest(threads):
     x = np.linspace(1, 10, 100)
     y = linear([1, 2], x)
     assert linear_model_lnprob([1, 2], x, y) == 0
@@ -84,7 +89,9 @@ def test_linear_ultranest():
     b = Parameter(name="b", min=-2, max=2)
     fitter = UltraNestFitter(
         lnprob=linear_model_lnprob, parameters=[a, b],
-        transform=rescale_linear
+        transform=rescale_linear,
+        threads=threads,
+        log_dir=f"test_{threads}"
     )
     bestfit = fitter.fit(x=x, y=y)
     assert bestfit["a"], bestfit["b"] == pytest.approx([1, 2])
