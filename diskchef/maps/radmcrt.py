@@ -126,7 +126,10 @@ class RadMCBase(MapBase):
         if proc.stderr: self.logger.error(proc.stderr)
         self.logger.debug(proc.stdout)
         for match in re.finditer(r"WARNING:(.*\n(?:  .*\n){2,})", proc.stdout):
-            self.logger.warn(match.group(1))
+            if "In the molecular data file" in match.group(1):
+                self.logger.info(match.group(1))
+            else:
+                self.logger.warn(match.group(1))
 
     def interpolate(self, column: str) -> None:
         """Adds a new `column` to `self.polar_table` with the data iterpolated from `self.table`"""

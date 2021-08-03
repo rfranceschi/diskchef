@@ -47,6 +47,7 @@ class Fitter:
 
     def __post_init__(self):
         self._table = None
+        self.sampler = None
 
     @property
     def table(self):
@@ -119,6 +120,7 @@ class EMCEEFitter(Fitter):
         sampler.run_mcmc(pos0, self.nsteps, progress=self.progress)
         if pool is not None:
             pool.close()
+        self.sampler = sampler
         tbl = QTable(sampler.flatchain, names=[par.name for par in self.parameters])
         tbl["lnprob"] = sampler.flatlnprobability
         self._table = tbl
@@ -167,7 +169,7 @@ class UltraNestFitter(Fitter):
         sampler.plot_run()
         sampler.plot_trace()
         sampler.plot_corner()
-
+        self.sampler = sampler
         # tbl = QTable(sampler.flatchain, names=[par.name for par in self.parameters])
         # tbl["lnprob"] = sampler.flatlnprobability
         # self._table = tbl

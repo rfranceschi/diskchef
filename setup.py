@@ -26,7 +26,7 @@ setup(
         'h5py',
     ],
     version_config=True,
-    setup_requires=['setuptools-git-versioning'],
+    setup_requires=['setuptools-git-versioning', 'cython'],
     python_requires=">=3.8",
 )
 
