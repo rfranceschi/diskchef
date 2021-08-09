@@ -12,6 +12,7 @@ from astropy.table import Table, QTable
 import astropy.wcs
 from matplotlib import pyplot as plt
 import spectral_cube
+from spectral_cube import SpectralCube
 
 try:
     import galario
@@ -35,6 +36,9 @@ from diskchef.engine.other import PathLike
 class UVFits:
     """
     Reads GILDAS-outputted visibilities UVFits file
+
+    To create a valid uvfits file, run in mapping prompt:
+    MAPPING> FITS <output>.uvfits FROM <input>.uvt /STYLE CASA
 
     Args:
         path: PathLike -- path to the uv fits table
@@ -76,7 +80,11 @@ class UVFits:
      -81.27303053788901   70.64653734266903   0.1422663387734871 .. 0.15214664685856188  -0.008367051589066395 .. -0.017851764309400768 0.11814501360102375 .. 0.12543794548908482
     """
 
-    def __init__(self, path: PathLike, channel: Union[int, Sequence, slice, Literal['all']] = 'all', sum: bool = True):
+    def __init__(
+            self,
+            path: PathLike,
+            channel: Union[int, Sequence, slice, Literal['all']] = 'all',
+            sum: bool = True):
         self.logger = logging.getLogger(__name__ + '.' + self.__class__.__qualname__)
         self.logger.info("Creating an instance of %s", self.__class__.__qualname__)
         self.logger.debug("With parameters: %s", self.__dict__)
@@ -96,6 +104,14 @@ class UVFits:
             else:
                 raise CHEFTypeError("channel should be either: int, Sequence, slice, 'all', Ellipsis'")
             data = self._fits['DATA'][:, 0, 0, 0, self.fetch_channel, 0, :]
+            # Depends on /style keyword. This is for /style casa
+            # to create a valid uvfits file, run in mapping prompt:
+            # MAPPING> FITS <output>.uvfits FROM <input>.uvt /STYLE CASA
+            if len(data.shape) != 3:
+                raise CHEFValueError(
+                    "to create a valid uvfits file, run in mapping prompt:\n"
+                    "MAPPING> FITS <output>.uvfits FROM <input>.uvt /STYLE CASA"
+                )
             self.fetched_channels = np.arange(self._fits['DATA'].shape[4])[self.fetch_channel]
             self.re = data[:, :, 0] << u.Jy
             self.im = data[:, :, 1] << u.Jy
@@ -173,9 +189,12 @@ class UVFits:
         plt.axis('equal')
         plt.scatter(self.u, self.v, alpha=0.5, s=0.2)
 
-    def image_to_visibilities(self, file: PathLike):
+    def image_to_visibilities(self, cube: Union[SpectralCube, PathLike]):
         """Import cube from a FITS `file`, sample it with visibilities of this UVFITS"""
-        cube = spectral_cube.SpectralCube.read(file)
+        try:
+            cube = spectral_cube.SpectralCube.read(cube)
+        except AttributeError:
+            pass
         pixel_area_units = u.Unit(cube.wcs.celestial.world_axis_units[0]) * u.Unit(
             cube.wcs.celestial.world_axis_units[1])
         pixel_area = astropy.wcs.utils.proj_plane_pixel_area(cube.wcs.celestial) * pixel_area_units
@@ -233,7 +252,7 @@ class UVFits:
         self.logger.debug("Data spectral axis: %s", data.spectral_axis.to(self.frequencies.unit))
         self.logger.debug("UVTable spectral axis: %s", self.frequencies)
         if not np.all(np.equal(data.spectral_axis, self.frequencies)):
-            data = data.spectral_interpolate(spectral_grid=self.frequencies)
+            data = data.spectral_interpolate(spectral_grid=self.frequencies, fill_value=0.)
             self.logger.info("Interpolate data to UVTable spectral grid")
 
         pixel_area_units = u.Unit(data.wcs.celestial.world_axis_units[0]) \
