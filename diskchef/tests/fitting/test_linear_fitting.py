@@ -128,9 +128,9 @@ def test_linear_ultranest(threads):
         transform=rescale_linear,
         threads=threads,
         log_dir=f"test_{threads}",
-        run_kwargs={"max_ncalls": 1e3}
     )
     bestfit = fitter.fit(x=x, y=y)
+    print(a.math_repr, b.math_repr)
     assert [bestfit["a"], bestfit["b"]] == [1, 2]
 
 
