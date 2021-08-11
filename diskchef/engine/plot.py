@@ -18,7 +18,7 @@ import matplotlib.colors
 from matplotlib import pyplot as plt
 from matplotlib.ticker import LogFormatterMathtext
 
-from diskchef import CTable
+from diskchef.engine.ctable import CTable
 from diskchef.engine.other import LogNormMaxOrders
 from diskchef.engine.exceptions import CHEFValueError
 

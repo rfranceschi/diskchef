@@ -126,54 +126,24 @@ def my_likelihood(params):
 # In[9]:
 
 
-from diskchef.fitting.fitters import EMCEEFitter as Fitter, Parameter
+from diskchef.fitting.fitters import UltraNestFitter as Fitter, Parameter
 
-a = Parameter(name="tapering_radius", min=80, max=200)
-b = Parameter(name="gas_mass", min=1e-4, max=2e-3)
+a = Parameter(name="tapering_radius", min=80, max=200, truth=100)
+b = Parameter(name="gas_mass", min=1e-4, max=2e-3, truth=1e-3)
+
+
 fitter = Fitter(
     my_likelihood, [a, b],
-    threads=8,
-    nwalkers=4,
-    nsteps=3,
     progress=True
 )
 
-#     sampler = ultranest.ReactiveNestedSampler(parameters, my_likelihood, prior_transform,
-#                                               log_dir = 'testlog', resume=True)
-
-
-# In[10]:
-
-
 res = fitter.fit()
 
-# In[11]:
-
-
-fitter.table
-#     result = sampler.run(max_ncalls=100, min_num_live_points=10, cluster_num_live_points=5)
-
-
-# In[12]:
-
-
-fitter.corner();
-
-# In[ ]:
-
-
-#     paramnames = result['paramnames']
-#     data = np.array(result['weighted_samples']['points'])
-#     weights = np.array(result['weighted_samples']['weights'])
-#     cumsumweights = np.cumsum(weights)
-
-#     mask = cumsumweights > 1e-4
-
-
-# In[ ]:
-
-
-#     import corner
-#     figure = corner.corner(data[mask,:], weights=weights[mask],
-#                   labels=paramnames, show_titles=True)
-#     figure.savefig('tt.png')
+if fitter.sampler.use_mpi:
+    from mpi4py import MPI
+    comm = MPI.COMM_WORLD
+    rank = comm.Get_rank()
+    if rank == 0:
+        fitter.corner()
+else:
+    fitter.corner()

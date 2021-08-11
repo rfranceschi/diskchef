@@ -21,8 +21,7 @@ from matplotlib import pyplot as plt
 from emcee import EnsembleSampler
 from matplotlib.colors import LogNorm
 
-from diskchef.engine import CHEFNotImplementedError
-from diskchef.engine.exceptions import CHEFValueError
+from diskchef.engine.exceptions import CHEFValueError, CHEFNotImplementedError
 from diskchef.engine.overplot_scatter import overplot_scatter, overplot_hexbin
 
 
@@ -130,11 +129,13 @@ class Fitter:
         else:
             weights = np.ones_like(data[:, 0])
             mask = Ellipsis
-
-        fig = corner.corner(
-            data[mask], weights=weights[mask], labels=labels, show_titles=False, truths=truths, **kwargs
-        )
-        self._decorate_corner(fig)
+        try:
+            fig = corner.corner(
+                data[mask], weights=weights[mask], labels=labels, show_titles=False, truths=truths, **kwargs
+            )
+            self._decorate_corner(fig)
+        except AssertionError:
+            return Figure()
         # overplot_scatter(fig, data, c=-self.table["lnprob"], norm=LogNorm(), **scatter_kwargs)
         if self.hexbin:
             overplot_hexbin(fig, data[mask], C=-self.table["lnprob"][mask], norm=LogNorm(), **hexbin_kwargs)
@@ -240,6 +241,7 @@ class UltraNestFitter(Fitter):
     resume: Literal[True, 'resume', 'resume-similar', 'overwrite', 'subfolder'] = 'overwrite'
     log_dir: Union[str, Path] = None
     run_kwargs: dict = field(default_factory=dict)
+    storage_backend: Literal['hdf5', 'csv', 'tsv'] = 'csv'
 
     INFINITY = 1e50
 
@@ -276,10 +278,18 @@ class UltraNestFitter(Fitter):
             self.transform,
             log_dir=self.log_dir,
             resume=self.resume,
-            storage_backend='csv'
+            storage_backend=self.storage_backend
         )
         sampler.run(**self.run_kwargs)
-        sampler.plot()
+
+        if sampler.use_mpi:
+            from mpi4py import MPI
+            comm = MPI.COMM_WORLD
+            rank = comm.Get_rank()
+            if rank == 0:
+                sampler.plot()
+        else:
+            sampler.plot()
         self.sampler = sampler
 
         results = sampler.results['posterior']

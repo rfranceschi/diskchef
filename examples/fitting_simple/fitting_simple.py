@@ -1,4 +1,75 @@
+from typing import List
+import logging
+
 import numpy as np
+from matplotlib import pyplot as plt
+
+from diskchef.fitting import Parameter, EMCEEFitter, BruteForceFitter, UltraNestFitter
+
+
+def linear(
+        params: List[Parameter],
+        x: np.ndarray
+):
+    return params[0] * x + params[1]
+
+
+def linear_model_lnprob(
+        params: List[Parameter],
+        x: np.ndarray,
+        y: np.ndarray,
+        weights: np.ndarray = None
+):
+    y_from_x = linear(params, x)
+    if weights is None:
+        weights = np.ones_like(y)
+    chi2 = np.sum(weights ** 2 * (y - y_from_x) ** 2)
+    return -0.5 * chi2
+
+
+def rescale_linear(cube):
+    params = np.empty_like(cube)
+    lo = 0.1
+    hi = 10
+    params[0] = 10 ** (cube[0] * (np.log10(hi) - np.log10(lo)) + np.log10(lo))
+    lo = -2
+    hi = 5
+    params[1] = cube[1] * (hi - lo) + lo
+    return params
+
+
+def sqr(
+        params: List[Parameter],
+        x: np.ndarray
+):
+    return params[0] * x ** 2 + params[1] * x + params[2]
+
+
+def sqr_model_lnprob(
+        params: List[Parameter],
+        x: np.ndarray,
+        y: np.ndarray,
+        weights: np.ndarray = None
+):
+    y_from_x = sqr(params, x)
+    if weights is None:
+        weights = np.ones_like(y)
+    chi2 = np.sum(weights ** 2 * (y - y_from_x) ** 2)
+    return -0.5 * chi2
+
+
+def rescale_sqr(cube):
+    params = np.empty_like(cube)
+    lo = 0.1
+    hi = 10
+    params[0] = 10 ** (cube[0] * (np.log10(hi) - np.log10(lo)) + np.log10(lo))
+    lo = -2
+    hi = 5
+    params[1] = cube[1] * (hi - lo) + lo
+    lo = -2
+    hi = 5
+    params[2] = cube[2] * (hi - lo) + lo
+    return params
 
 
 def example_lin():
@@ -40,7 +111,7 @@ def example_sqr():
     fitter.corner()
 
     fitter = UltraNestFitter(lnprob=sqr_model_lnprob, parameters=params, threads=threads,
-                             # transform=rescale_sqr
+                             # transform=rescale_sqr # this can be generated based on fields of Parameter class
                              )
     bestfit = fitter.fit(x=x, y=y)
     fitter.corner()
@@ -51,5 +122,5 @@ def example_sqr():
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO)
     threads = 1
-    # example_lin()
+    example_lin()
     example_sqr()
