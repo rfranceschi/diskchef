@@ -59,7 +59,14 @@ class Parameter:
         return out
 
     def __eq__(self, other):
-        return self.fitted == other
+        if self.fitted is None:
+            return False
+        elif self.fitted_error is None:
+            return self.fitted == other
+        elif (self.fitted_error_up is None) or (self.fitted_error_down is None):
+            return self.fitted - self.fitted_error <= other <= self.fitted + self.fitted_error
+        else:
+            return self.fitted - self.fitted_error_down <= other <= self.fitted + self.fitted_error_up
 
 
 @dataclass

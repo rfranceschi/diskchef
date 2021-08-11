@@ -108,7 +108,7 @@ def test_linear_emcee(threads):
         threads=threads
     )
     bestfit = fitter.fit(x=x, y=y)
-    assert [bestfit["a"], bestfit["b"]] == pytest.approx([1, 2], rel=0.1, abs=0.1)
+    assert [bestfit["a"], bestfit["b"]] == [1, 2]
 
 
 @pytest.mark.parametrize(
@@ -131,7 +131,7 @@ def test_linear_ultranest(threads):
         run_kwargs={"max_ncalls": 1e3}
     )
     bestfit = fitter.fit(x=x, y=y)
-    assert [bestfit["a"], bestfit["b"]] == pytest.approx([1, 2], rel=0.01, abs=0.1)
+    assert [bestfit["a"], bestfit["b"]] == [1, 2]
 
 
 def example_lin():
