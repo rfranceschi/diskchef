@@ -101,7 +101,14 @@ class Fitter:
                 return -np.inf
             if (parameter.max is not None) and (parameter.max < arg):
                 return -np.inf
-        return self.lnprob(*args, **kwargs)
+
+        try:
+            return self.lnprob(*args, **kwargs)
+        except Exception as e:
+            self.logger.error("lnprob crushed during the function call with %s %s",
+                              args, kwargs)
+            self.logger.error("%s", e)
+            return -np.inf
 
     @property
     def table(self):
@@ -258,8 +265,10 @@ class UltraNestFitter(Fitter):
         return params
 
     def lnprob_fixed(self, *args, **kwargs):
-        return np.nan_to_num(super().lnprob_fixed(*args, **kwargs),
-                             neginf=-self.INFINITY, posinf=self.INFINITY, nan=-self.INFINITY)
+        return np.nan_to_num(
+            super().lnprob_fixed(*args, **kwargs),
+            neginf=-self.INFINITY, posinf=self.INFINITY, nan=-self.INFINITY
+        )
 
     def fit(
             self,
