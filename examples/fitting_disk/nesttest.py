@@ -101,25 +101,28 @@ def prior_transform(quantile_cube):
 def my_likelihood(params):
     tapering_radius = params[0]
     gas_mass = params[1]
-
-    with tempfile.TemporaryDirectory(prefix='fit_', dir='fit_tmp') as temp_dir:
-        folder = Path(temp_dir)
-        disk_model = Model(disk="Fit",
-                           line_list=lines,
-                           params=dict(r_min=1 * u.au, r_max=300 * u.au, radial_bins=60, vertical_bins=60,
-                                       tapering_radius=tapering_radius * u.au, gas_mass=gas_mass * u.Msun),
-                           rstar=yb.radius(mass),
-                           tstar=yb.effective_temperature(mass),
-                           inc=30 * u.deg,
-                           PA=25 * u.deg,
-                           distance=150 * u.pc,
-                           npix=120,
-                           channels=21,
-                           run_mctherm=False,
-                           folder=folder, run=False)
-        disk_model.chemistry()
-        disk_model.image()
-        chi2 = uvcoverage.chi2_with(folder / "radmc_gas" / "13CO J=2-1_image.fits")
+    try:
+        with tempfile.TemporaryDirectory(prefix='fit_', dir='fit_tmp') as temp_dir:
+            folder = Path(temp_dir)
+            disk_model = Model(disk="Fit",
+                               line_list=lines,
+                               params=dict(r_min=1 * u.au, r_max=300 * u.au, radial_bins=60, vertical_bins=60,
+                                           tapering_radius=tapering_radius * u.au, gas_mass=gas_mass * u.Msun),
+                               rstar=yb.radius(mass),
+                               tstar=yb.effective_temperature(mass),
+                               inc=30 * u.deg,
+                               PA=25 * u.deg,
+                               distance=150 * u.pc,
+                               npix=120,
+                               channels=21,
+                               run_mctherm=False,
+                               folder=folder, run=False)
+            disk_model.chemistry()
+            disk_model.image()
+            chi2 = uvcoverage.chi2_with(folder / "radmc_gas" / "13CO J=2-1_image.fits")
+    except Exception as e:
+        print(e)
+        return -np.inf
     return -0.5 * chi2
 
 
@@ -134,7 +137,8 @@ b = Parameter(name="gas_mass", min=1e-4, max=2e-3, truth=1e-3)
 
 fitter = Fitter(
     my_likelihood, [a, b],
-    progress=True
+    progress=True,
+    resume=True,
 )
 
 res = fitter.fit()

@@ -241,7 +241,7 @@ class UltraNestFitter(Fitter):
     resume: Literal[True, 'resume', 'resume-similar', 'overwrite', 'subfolder'] = 'overwrite'
     log_dir: Union[str, Path] = None
     run_kwargs: dict = field(default_factory=dict)
-    storage_backend: Literal['hdf5', 'csv', 'tsv'] = 'csv'
+    storage_backend: Literal['hdf5', 'csv', 'tsv'] = 'hdf5'
 
     INFINITY = 1e50
 
