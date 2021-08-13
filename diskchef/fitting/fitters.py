@@ -76,6 +76,7 @@ class Fitter:
     threads: int = None
     progress: bool = False
     hexbin: bool = True
+    fitter_kwargs: dict = field(default_factory=dict)
 
     def __post_init__(self):
         self.logger = logging.getLogger(__name__ + '.' + self.__class__.__qualname__)
@@ -145,7 +146,11 @@ class Fitter:
             return Figure()
         # overplot_scatter(fig, data, c=-self.table["lnprob"], norm=LogNorm(), **scatter_kwargs)
         if self.hexbin:
-            overplot_hexbin(fig, data[mask], C=-self.table["lnprob"][mask], norm=LogNorm(), **hexbin_kwargs)
+            overplot_hexbin(
+                fig, data[mask], C=-self.table["lnprob"][mask],
+                norm=LogNorm(), reduce_C_function=np.nanmin,
+                **hexbin_kwargs
+            )
         return fig
 
     def _decorate_corner(self, fig: Figure):
@@ -214,7 +219,7 @@ class EMCEEFitter(Fitter):
             pool = None
 
         sampler = EnsembleSampler(self.nwalkers, len(self.parameters), self.lnprob_fixed, args=args, kwargs=kwargs,
-                                  pool=pool)
+                                  pool=pool, **self.fitter_kwargs)
         sampler.run_mcmc(pos0, self.burn_steps, progress=self.progress)
         if self.burn_strategy is None:
             pos1 = None
@@ -248,14 +253,26 @@ class UltraNestFitter(Fitter):
     resume: Literal[True, 'resume', 'resume-similar', 'overwrite', 'subfolder'] = 'overwrite'
     log_dir: Union[str, Path] = None
     run_kwargs: dict = field(default_factory=dict)
+
     storage_backend: Literal['hdf5', 'csv', 'tsv'] = 'hdf5'
 
+    DEFAULT_FOR_RUN_KWARGS = dict(
+        Lepsilon=0.01,  # Increase when lnprob is inaccurate
+        frac_remain=0.05,  # Decrease if lnprob is expected to have peaks
+        min_num_live_points=100,
+        dlogz=1.,
+        dKL=1.,
+    )
     INFINITY = 1e50
 
     def __post_init__(self):
         super().__post_init__()
         if self.transform is None:
             self.transform = self.rescale
+
+        for key, value in self.DEFAULT_FOR_RUN_KWARGS.items():
+            if key not in self.run_kwargs:
+                self.run_kwargs[key] = value
 
     def rescale(self, cube):
         params = np.empty_like(cube)
@@ -287,9 +304,12 @@ class UltraNestFitter(Fitter):
             self.transform,
             log_dir=self.log_dir,
             resume=self.resume,
-            storage_backend=self.storage_backend
+            storage_backend=self.storage_backend,
+            **self.fitter_kwargs
         )
-        sampler.run(**self.run_kwargs)
+        sampler.run(
+            **self.run_kwargs
+        )
 
         if sampler.use_mpi:
             from mpi4py import MPI
