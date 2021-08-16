@@ -1,6 +1,6 @@
 """Brut-force fitter for diskchef"""
+import pickle
 import logging
-
 import os
 from dataclasses import dataclass, field
 from functools import partial
@@ -21,6 +21,7 @@ from matplotlib import pyplot as plt
 from emcee import EnsembleSampler
 from matplotlib.colors import LogNorm
 
+import diskchef.engine.other
 from diskchef.engine.exceptions import CHEFValueError, CHEFNotImplementedError
 from diskchef.engine.overplot_scatter import overplot_scatter, overplot_hexbin
 
@@ -56,6 +57,9 @@ class Parameter:
             out += f" ({self.format_.format(self.truth)})"
         out += "$"
         return out
+
+    def __str__(self):
+        return f"${self.name}$"
 
     def __eq__(self, other):
         if self.fitted is None:
@@ -95,6 +99,11 @@ class Fitter:
                 parameter.fitted_error_up = parameter.fitted_error_down = None
                 self.logger.info("Parameter %s is cleaned.", parameter)
 
+    def _post_fit(self):
+        fig = self.corner()
+        fig.savefig("corner.pdf")
+        self.save()
+
     def lnprob_fixed(self, *args, **kwargs):
         """Decorates self.lnprob so that minimum and maximum from self.parameters are considered"""
         for parameter, arg in zip(self.parameters, *args):
@@ -126,8 +135,10 @@ class Fitter:
             scatter_kwargs = {}
         if hexbin_kwargs is None:
             hexbin_kwargs = {}
+        if "cmap" not in hexbin_kwargs.items():
+            hexbin_kwargs["cmap"] = "afmhot"
         data = np.array([self.table[param.name] for param in self.parameters]).T
-        labels = [param.name for param in self.parameters]
+        labels = [str(param) for param in self.parameters]
         truths = [parameter.truth for parameter in self.parameters]
 
         if "weight" in self.table.colnames:
@@ -141,6 +152,33 @@ class Fitter:
             fig = corner.corner(
                 data[mask], weights=weights[mask], labels=labels, show_titles=False, truths=truths, **kwargs
             )
+            mins = []
+            maxs = []
+            medians = []
+            for param in self.parameters:
+                if param.fitted_error_down is not None:
+                    min_ = param.fitted - param.fitted_error_down
+                elif param.fitted_error is not None:
+                    min_ = param.fitted - param.fitted_error
+                else:
+                    min_ = None
+                if param.fitted_error_up is not None:
+                    max_ = param.fitted + param.fitted_error_up
+                elif param.fitted_error is not None:
+                    max_ = param.fitted + param.fitted_error
+                else:
+                    max_ = None
+                if param.fitted is not None:
+                    median_ = param.fitted
+                else:
+                    median_ = None
+                mins.append(min_)
+                maxs.append(max_)
+                medians.append(median_)
+            corner.overplot_lines(fig, mins, color='k', alpha=0.2, linestyle=(0, (5, 5)))
+            corner.overplot_lines(fig, maxs, color='k', alpha=0.2, linestyle=(0, (5, 5)))
+            corner.overplot_lines(fig, medians, color='k', alpha=1, linestyle=(0, (5, 5)))
+
             self._decorate_corner(fig)
         except AssertionError:
             return Figure()
@@ -148,7 +186,7 @@ class Fitter:
         if self.hexbin:
             overplot_hexbin(
                 fig, data[mask], C=-self.table["lnprob"][mask],
-                norm=LogNorm(), reduce_C_function=np.nanmin,
+                norm=diskchef.engine.other.LogNormMaxOrders(maxdepth=1e4), reduce_C_function=np.nanmin,
                 **hexbin_kwargs
             )
         return fig
@@ -157,11 +195,31 @@ class Fitter:
         ndim = len(self.parameters)
         axes = np.array(fig.axes).reshape((ndim, ndim))
         for ax, parameter in zip(axes.diagonal(), self.parameters):
-            ax.set_title(parameter.math_repr)
+            ax.set_title(parameter.math_repr, size="small")
 
     @property
     def parameters_dict(self) -> Dict[str, Parameter]:
         return {parameter.name: parameter for parameter in self.parameters}
+
+    def save(self, filename: Path = "fitter.sav"):
+        """Saves the fitter to a file"""
+        try:
+            with open(filename, "wb") as fff:
+                pickle.dump(self, fff)
+            self.logger.info("Fitter successfully pickled to %s", filename)
+        except Exception as e:
+            self.logger.error("Could not save fitter! %s", e)
+
+    @classmethod
+    def load(cls, filename: Path = "fitter.sav") -> "Fitter":
+        """Return the loaded fitter from a file"""
+        try:
+            with open(filename, "rb") as fff:
+                fitter = pickle.load(fff)
+            fitter.logger.info("Fitter was successfully unpickled from %s", filename)
+            return fitter
+        except Exception as e:
+            raise e
 
 
 @dataclass
@@ -192,9 +250,14 @@ class BruteForceFitter(Fitter):
         tbl["weight"] = np.exp(tbl["lnprob"] - tbl["lnprob"].max())
         self._table = tbl
         argmax_row = tbl[np.argmax(tbl["lnprob"])]
-        for parameter in self.parameters:
+        for parameter, n_points in zip(self.parameters, self.n_points):
             parameter.fitted = argmax_row[parameter.name]
+            err = (parameter.max - parameter.min) / (n_points - 1)
+            parameter.fitted_error_up = err
+            parameter.fitted_error_down = err
+            parameter.fitted_error = err
 
+        self._post_fit()
         return self.parameters_dict
 
 
@@ -241,7 +304,7 @@ class EMCEEFitter(Fitter):
             parameter.fitted_error_up = results[2] - results[1]
             parameter.fitted_error_down = results[1] - results[0]
             parameter.fitted_error = (parameter.fitted_error_up + parameter.fitted_error_down) / 2
-
+        self._post_fit()
         return self.parameters_dict
 
 
@@ -287,6 +350,19 @@ class UltraNestFitter(Fitter):
             neginf=-self.INFINITY, posinf=self.INFINITY, nan=-self.INFINITY
         )
 
+    def save(self, filename: Path = "fitter.sav"):
+        """Saves the fitter to a file. Does not save ultranest.ReactiveNestedSampler object!"""
+        sampler = self.sampler
+        del self.sampler
+        try:
+            with open(filename, "wb") as fff:
+                pickle.dump(self, fff)
+            self.logger.info("Fitter successfully pickled to %s. Sampler was not picked!", filename)
+        except Exception as e:
+            self.logger.error("Could not save fitter! %s", e)
+        finally:
+            self.sampler = sampler
+
     def fit(
             self,
             *args, **kwargs
@@ -299,7 +375,7 @@ class UltraNestFitter(Fitter):
         lnprob = partial(self.lnprob_fixed, *args, **kwargs)
         lnprob.__name__ = self.lnprob.__name__
         sampler = ultranest.ReactiveNestedSampler(
-            [param.name for param in self.parameters],
+            [str(param) for param in self.parameters],
             lnprob,
             self.transform,
             log_dir=self.log_dir,
@@ -334,5 +410,5 @@ class UltraNestFitter(Fitter):
             parameter.fitted_error_up = results['errup'][i] - results['mean'][i]
             parameter.fitted_error_down = results['mean'][i] - results['errlo'][i]
             parameter.fitted_error = results['stdev'][i]
-
+        self._post_fit()
         return self.parameters_dict
