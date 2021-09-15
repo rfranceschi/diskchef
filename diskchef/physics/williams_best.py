@@ -85,7 +85,9 @@ class WilliamsBest2014(ParametrizedPhysics):
         Return:
             temperature: u.K
         Raises:
-            astropy.unit.UnitConversionError if units are not consistent
+            astropy.unit.UnitConversion
+
+            Error if units are not consistent
         """
         temp_midplane = self.midplane_temperature_1au * (r.to(u.au) / u.au) ** (-self.temperature_slope)
         temp_atmosphere = self.atmosphere_temperature_1au * (r.to(u.au) / u.au) ** (-self.temperature_slope)
@@ -95,7 +97,7 @@ class WilliamsBest2014(ParametrizedPhysics):
                         (const.G * self.star_mass * self.molar_mass)
                 ) ** 0.5
         ).to(u.au)
-        temperature = np.zeros_like(z).value << u.K
+        temperature = u.Quantity(np.zeros_like(z)).value << u.K
         indices_atmosphere = z >= 4 * pressure_scalehight
         indices_midplane = ~ indices_atmosphere
         temperature[indices_atmosphere] = temp_atmosphere[indices_atmosphere]
@@ -175,6 +177,7 @@ class WilliamsBest2014(ParametrizedPhysics):
 
     @u.quantity_input
     def column_density(self, r: u.au) -> u.g / u.cm ** 2:
+        """Gas column density at given radius"""
         drop = np.where(r < self.inner_radius, self.inner_depletion, 1)
         return drop * self.column_density_1au * (r / self.tapering_radius) ** (-self.tapering_gamma) \
                * np.exp(-(r / self.tapering_radius) ** (2 - self.tapering_gamma))

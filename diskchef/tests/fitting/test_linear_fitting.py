@@ -92,7 +92,7 @@ def test_linear_brute(threads):
     assert [bestfit["a"], bestfit["b"]] == [1, 2]
 
     fitter.save(f"{runname}.sav")
-    loaded_fitter = EMCEEFitter.load(f"{runname}.sav")
+    loaded_fitter = BruteForceFitter.load(f"{runname}.sav")
 
     assert [loaded_fitter.parameters_dict["a"], loaded_fitter.parameters_dict["b"]] == [1, 2]
 

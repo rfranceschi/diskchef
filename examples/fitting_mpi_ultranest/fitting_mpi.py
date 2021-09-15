@@ -56,7 +56,7 @@ def example_sqr():
                              transform=rescale_sqr,  # this can be generated based on fields of Parameter class
                              resume=True,
                              storage_backend='hdf5',
-                             run_kwargs={"max_ncalls": 500}
+                             # run_kwargs={"max_ncalls": 500}
                              )
 
     bestfit = fitter.fit(x=x, y=y)

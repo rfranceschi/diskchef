@@ -33,6 +33,7 @@ class Parameter:
     max: Union[u.Quantity, float] = None
     truth: float = None
     format_: str = "{:.2f}"
+    log: bool = False
 
     def __post_init__(self):
         self.fitted = None
@@ -340,8 +341,11 @@ class UltraNestFitter(Fitter):
     def rescale(self, cube):
         params = np.empty_like(cube)
         for i, parameter in enumerate(self.parameters):
-            params[i] = cube[i] * (parameter.max - parameter.min) + parameter.min
-        # params[0] = 10 ** (cube[0] * (np.log10(hi) - np.log10(lo)) + np.log10(lo))
+            if parameter.log:
+                params[i] = 10 ** (cube[i] * (np.log10(parameter.max) - np.log10(parameter.min))
+                                   + np.log10(parameter.min))
+            else:
+                params[i] = cube[i] * (parameter.max - parameter.min) + parameter.min
         return params
 
     def lnprob_fixed(self, *args, **kwargs):
