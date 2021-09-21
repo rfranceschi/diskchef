@@ -22,7 +22,7 @@ setup(
         'sklearn',
         'emcee',
         'corner',
-        'ultranest',
+        'ultranest >= 3.3.3',
         'h5py',
         'mpi4py'
     ],

@@ -6,7 +6,6 @@ from matplotlib import pyplot as plt
 import numpy as np
 import astropy.units as u
 
-# NB: ultranest requires h5py
 import ultranest
 
 import logging
@@ -15,8 +14,7 @@ from diskchef.lamda.line import Line
 from diskchef.physics.yorke_bodenheimer import YorkeBodenheimer2008
 from diskchef.model.model import Model
 from diskchef.uv.uvfits_to_visibilities_ascii import UVFits
-from diskchef.fitting.fitters import UltraNestFitter as Fitter, Parameter
-print("Import done")
+from diskchef.fitting.fitters import UltraNestFitter, Parameter
 
 mass = 0.7 * u.M_sun
 yb = YorkeBodenheimer2008()
@@ -27,7 +25,6 @@ lines = [
     # Line(name='C18O J=2-1', transition=2, molecule='C18O'),
 ]
 
-print("Reference model")
 try:
     from mpi4py import MPI
     comm = MPI.COMM_WORLD
@@ -35,7 +32,6 @@ try:
     print(f"Fitter of rank {rank} is online")
 except ImportError:
     print("Could not get to MPI!")
-print("... done")
 
 refmodel_13CO = 'Reference/radmc_gas/13CO J=2-1_image.fits'
 #refmodel_C18O = 'Reference/radmc_gas/C18O J=2-1_image.fits'
@@ -91,19 +87,16 @@ parameters = [
     Parameter(name="T_{atm}, K", min=200, max=2000, truth=1000),
     Parameter(name="T_{mid}, K", min=50, max=400, truth=200),
 ]  
-print("Parameters initialized")
 
 fitter = UltraNestFitter(
     my_likelihood, parameters,
     progress=True,
     storage_backend='hdf5',
     resume=True,
-    run_kwargs={'min_num_live_points': 10},
+    run_kwargs={'dlogz':0.3, 'dKL':0.3, 'min_num_live_points': 400},
 )
 
-print("Fitter initialized")
 res = fitter.fit()
-print("MPI? ", fitter.sampler.use_mpi)
 
 if fitter.sampler.use_mpi:
     comm = MPI.COMM_WORLD
