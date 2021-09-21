@@ -12,7 +12,7 @@ with the parameters described in the `dc_generate_model.py` file.
 
 Then, submit the slurm job by
 ```bash
-sbatch -J dc_runner.sh
+sbatch dc_runner.sh
 ``` 
 
 This will take time...
