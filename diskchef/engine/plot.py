@@ -18,7 +18,7 @@ import matplotlib.colors
 from matplotlib import pyplot as plt
 from matplotlib.ticker import LogFormatterMathtext
 
-from diskchef import CTable
+from diskchef.engine.ctable import CTable
 from diskchef.engine.other import LogNormMaxOrders
 from diskchef.engine.exceptions import CHEFValueError
 
@@ -109,11 +109,9 @@ class Plot2D(Plot):
                 maxlevel = np.round(np.log10(self.norm.vmax), 1)
             else:
                 self.cbar_formatter = None
-            self.levels = np.logspace(
-                minlevel,
-                maxlevel,
-                13
-            )
+            # as we need to convert self.levels to correct units and leave dimentionless
+            # noinspection PyTypeChecker
+            self.levels = np.logspace(minlevel, maxlevel, 13)
         else:
             self.levels = self.levels.to_value(self.data_unit)
         if len(set(self.levels)) == 1:

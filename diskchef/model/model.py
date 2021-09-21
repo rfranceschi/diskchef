@@ -21,6 +21,12 @@ from diskchef.physics.multidust import DustPopulation
 from diskchef.physics.williams_best import WilliamsBest2014
 from diskchef.engine.other import PathLike
 
+import warnings
+from spectral_cube.utils import SpectralCubeWarning
+
+warnings.filterwarnings(action='ignore', category=SpectralCubeWarning,
+                        append=True)
+
 
 @dataclass
 class BaseModel:
@@ -104,6 +110,7 @@ class Model:
     radial_bins_rt: int = None
     vertical_bins_rt: int = None
     folder: pathlib.Path = None
+    physics_class: Type[diskchef.physics.base.PhysicsModel] = WilliamsBest2014
 
     def __post_init__(self):
         if self.folder is None:
@@ -121,7 +128,7 @@ class Model:
         if self.vertical_bins_rt is None:
             self.radial_bins_rt = self.params.get("vertical_bins", 100)
 
-        self.disk_physical_model = WilliamsBest2014(**self.params)
+        self.disk_physical_model = self.physics_class(**self.params)
         dust = DustPopulation(dust_files("diana")[0],
                               table=self.disk_physical_model.table,
                               name="DIANA dust")

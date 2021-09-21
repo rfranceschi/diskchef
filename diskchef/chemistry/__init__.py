@@ -15,3 +15,4 @@ of the molecular layer set by default
 from diskchef.chemistry.abundances import Abundances
 from diskchef.chemistry.base import ChemistryModel
 from diskchef.chemistry.williams_best_co import ChemistryWB2014, NonzeroChemistryWB2014
+from diskchef.chemistry.scikit import SciKitChemistry

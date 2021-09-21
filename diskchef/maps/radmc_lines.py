@@ -1,4 +1,6 @@
+from contextlib import redirect_stdout
 import typing
+import io
 from datetime import timedelta
 import subprocess
 import time
@@ -140,7 +142,7 @@ class RadMCRT(RadMCBase):
                 threads=threads,
                 lineobj=line,
                 npix=npix,
-                coordinate=coordinate,
+                # coordinate=coordinate,
             )
 
     def _run_single(
@@ -186,7 +188,9 @@ class RadMCRT(RadMCBase):
         Returns:
             name of a newly created fits files
         """
-        im = radmc3dPy.image.readImage(fname=name)
+        with redirect_stdout(io.StringIO()) as f:
+            im = radmc3dPy.image.readImage(fname=name)
+        self.logger.debug(f.getvalue())
         restfreq = line.frequency.to(u.Hz).value
 
         x_deg = ((im.x << u.cm) / distance).to(u.deg, equivalencies=u.dimensionless_angles())

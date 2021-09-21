@@ -31,6 +31,12 @@ except ModuleNotFoundError:
 from diskchef.engine.exceptions import CHEFTypeError, CHEFValueError, CHEFNotImplementedError
 from diskchef.engine.other import PathLike
 
+import warnings
+from spectral_cube.utils import SpectralCubeWarning
+
+warnings.filterwarnings(action='ignore', category=SpectralCubeWarning,
+                        append=True)
+
 
 class UVFits:
     """
@@ -171,7 +177,7 @@ class UVFits:
 
     def plot_uvgrid(self):
         plt.axis('equal')
-        plt.scatter(self.u, self.v, alpha=0.5, s=0.2)
+        plt.scatter([*self.u, *(-self.u)], [*self.v, *(-self.v)], alpha=0.5, s=0.2)
 
     def image_to_visibilities(self, file: PathLike):
         """Import cube from a FITS `file`, sample it with visibilities of this UVFITS"""

@@ -11,3 +11,5 @@ Important:
 """
 from diskchef.engine.ctable import CTable
 from diskchef.engine.exceptions import CHEFSlowDownWarning, CHEFNotImplementedError
+from diskchef.engine.plot import Plot2D, Plot1D
+from diskchef.engine.other import LogNormMaxOrders

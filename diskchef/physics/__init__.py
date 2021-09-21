@@ -10,3 +10,6 @@ Important:
 
 from diskchef.physics.base import PhysicsModel
 from diskchef.physics.williams_best import WilliamsBest2014
+from diskchef.physics.yorke_bodenheimer import YorkeBodenheimer2008
+from diskchef.physics.multidust import DustPopulation
+from diskchef.physics.ionization import bruderer09, padovani18l

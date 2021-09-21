@@ -19,10 +19,15 @@ setup(
         'uvplot',
         'spectral_cube',
         'radmc3dPy @ git+https://github.com/dullemond/radmc3d-2.0.git#subdirectory=python/radmc3dPy',
-        'sklearn'
+        'sklearn',
+        'emcee',
+        'corner',
+        'ultranest >= 3.3.3',
+        'h5py',
+        'mpi4py'
     ],
     version_config=True,
-    setup_requires=['setuptools-git-versioning'],
+    setup_requires=['setuptools-git-versioning', 'cython'],
     python_requires=">=3.8",
 )
 
@@ -32,8 +37,3 @@ except ImportError as err1:
     print(err1)
     print("Install galario:")
     print("$ conda install -c conda-forge galario")
-
-
-
-
-
