@@ -1,4 +1,4 @@
-image: continuumio/miniconda3:4.9.2
+image: continuumio/miniconda3:latest
 # Change pip's cache directory to be inside the project directory since we can
 # only cache local items.
 variables:
