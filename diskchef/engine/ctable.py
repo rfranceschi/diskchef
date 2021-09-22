@@ -34,8 +34,10 @@ class CTable(QTable):
     >>> tbl = CTable()
     >>> tbl['Radius'] = [1, 2] * u.m; tbl['Data'] = [3e-4, 4e3]
     >>> tbl # doctest: +NORMALIZE_WHITESPACE
+    <CTable length=2>
        Radius        Data
           m
+      float64      float64
     ------------ ------------
     1.000000e+00 3.000000e-04
     2.000000e+00 4.000000e+03
@@ -61,8 +63,10 @@ class CTable(QTable):
     >>> tbl["Height"] = [0, 0, 0, 1, 1, 1] * u.au
     >>> tbl["Data"] = [2, 4, 6, 3, 5, 7] * u.K
     >>> tbl  # doctest: +NORMALIZE_WHITESPACE
+    <CTable length=6>
        Radius       Height        Data
          AU           AU           K
+      float64      float64      float64
     ------------ ------------ ------------
     1.000000e+00 0.000000e+00 2.000000e+00
     2.000000e+00 0.000000e+00 4.000000e+00
@@ -78,6 +82,18 @@ class CTable(QTable):
     >>> tbl.interpolate("Data")(1.5e8 * u.km, [0.2, 0.8] * u.au)
     <Quantity [2.20537614, 2.80537614] K>
     """
+
+    def __init__(self, data=None, masked=False, names=None, dtype=None,
+                 meta=None, copy=True, rows=None, copy_indices=True,
+                 units=None, descriptions=None,
+                 ):
+        super().__init__(data, masked, names, dtype, meta, copy, rows, copy_indices, units, descriptions)
+        self.dust_list = []
+        for column in self.columns:
+            try:
+                self[column].info.format = "e"
+            except ValueError:
+                pass
 
     def __getitem__(self, item):
         try:
@@ -153,23 +169,22 @@ class CTable(QTable):
         """
         raise CHEFNotImplementedError("Adding rows (grid points) is not possible in CTable")
 
+    def __setitem__(self, key, value):
+        super().__setitem__(key, value)
+        try:
+            self[key].info.format = "e"
+        except ValueError:
+            pass
+
     def __repr__(self):
-        for column in self.colnames:
-            try:
-                self[column].info.format = "e"
-            except ValueError:
-                pass
-        with io.StringIO() as buf, redirect_stdout(buf):
-            self.pprint_all()
-            output = buf.getvalue()
-        return output
+        return self._base_repr_(html=False, max_width=-1, max_lines=-1)
 
     def __str__(self):
-        return self.__repr__()
+        return repr(self)
 
     @property
     def _dust_pop_sum(self):
-        return sum([self[f"{dust.name} mass fraction"] for dust in self.meta["Dust list"]])
+        return sum([self[f"{dust.name} mass fraction"] for dust in self.dust_list])
 
     @property
     def dust_population_fully_set(self, atol=1e-5):
@@ -183,7 +198,7 @@ class CTable(QTable):
         Normalize the dust fractions so that the sum is 1
         """
         pop_sum = self._dust_pop_sum
-        for dust in self.meta["Dust list"]:
+        for dust in self.dust_list:
             dust.mass_fraction /= pop_sum
             dust.write_to_table()
         if not self.dust_population_fully_set:

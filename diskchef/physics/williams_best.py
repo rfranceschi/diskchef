@@ -43,8 +43,10 @@ class WilliamsBest2014(ParametrizedPhysics):
     >>> table = physics_small_grid.table
     >>> # print table with floats in exponential format
     >>> table  # doctest: +NORMALIZE_WHITESPACE
+    <CTable length=9>
        Radius       Height    Height to radius Gas density  Dust density Gas temperature Dust temperature
          AU           AU                         g / cm3      g / cm3           K               K
+      float64      float64        float64        float64      float64        float64         float64
     ------------ ------------ ---------------- ------------ ------------ --------------- ----------------
     1.000000e-01 0.000000e+00     0.000000e+00 1.153290e-15 1.153290e-17    7.096268e+02     7.096268e+02
     1.000000e-01 3.500000e-02     3.500000e-01 5.024587e-34 5.024587e-36    3.548134e+03     3.548134e+03
@@ -171,7 +173,7 @@ class WilliamsBest2014(ParametrizedPhysics):
     dust_temperature = gas_temperature
 
     @cached_property
-    def column_density_1au(self) -> u.g / u.cm ** 2:
+    def column_density_norm(self) -> u.g / u.cm ** 2:
         return (2 - self.tapering_gamma) * self.gas_mass / (2 * np.pi * self.tapering_radius ** 2) \
                * np.exp((self.inner_radius / self.tapering_radius) ** (2 - self.tapering_gamma))
 
@@ -179,5 +181,5 @@ class WilliamsBest2014(ParametrizedPhysics):
     def column_density(self, r: u.au) -> u.g / u.cm ** 2:
         """Gas column density at given radius"""
         drop = np.where(r < self.inner_radius, self.inner_depletion, 1)
-        return drop * self.column_density_1au * (r / self.tapering_radius) ** (-self.tapering_gamma) \
+        return drop * self.column_density_norm * (r / self.tapering_radius) ** (-self.tapering_gamma) \
                * np.exp(-(r / self.tapering_radius) ** (2 - self.tapering_gamma))
