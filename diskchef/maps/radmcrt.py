@@ -102,8 +102,13 @@ class RadMCBase(MapBase):
         self.polar_table.sort(['Theta', 'Distance to star'])
         self.polar_table['Velocity R'] = 0 * u.cm / u.s
         self.polar_table['Velocity Theta'] = 0 * u.cm / u.s
-        self.polar_table['Velocity Phi'] = \
-            np.sqrt(c.G * self.chemistry.physics.star_mass / self.polar_table['Distance to star']).to(u.cm / u.s)
+        self.polar_table['Velocity Phi'] = (
+                np.sqrt(
+                    c.G * self.chemistry.physics.star_mass
+                    / self.polar_table['Distance to star']
+                )
+                * np.sin(self.polar_table['Theta'])
+        ).to(u.cm / u.s)
 
         self.nrcells = (len(self.radii_edges) - 1) * (len(self.theta_edges) - 1)
         self.fitsfiles = []
