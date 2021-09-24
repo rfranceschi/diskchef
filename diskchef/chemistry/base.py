@@ -132,6 +132,11 @@ class ChemistryBase:
 
         return self.table[f"{species} column density towards star"]
 
+    def add_co_isotopologues(self):
+        """Writes new 13CO and C18O columns as 1/77 and 1/560 of CO column"""
+        self.table['13CO'] = self.table['CO'] / 77
+        self.table['C18O'] = self.table['CO'] / 560
+        self.logger.debug("13CO and C18O isotopologues are written to the table.")
 
 @dataclass
 class ChemistryModel(ChemistryBase):
