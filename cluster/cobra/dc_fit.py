@@ -16,6 +16,10 @@ from diskchef.model.model import Model
 from diskchef.uv.uvfits_to_visibilities_ascii import UVFits
 from diskchef.fitting.fitters import UltraNestFitter, Parameter
 
+radmc_dir = 'fit'
+
+Path(radmc_dir).mkdir(parents=True, exist_ok=True)
+
 mass = 0.7 * u.M_sun
 yb = YorkeBodenheimer2008()
 
@@ -49,7 +53,7 @@ def my_likelihood(params):
     atmosphere_temperature_1au = params[3]
     midplane_temperature_1au = params[4]
     try:
-        with tempfile.TemporaryDirectory(prefix='fit_', dir='.') as temp_dir:
+        with tempfile.TemporaryDirectory(prefix='fit_', dir=radmc_dir) as temp_dir:
             folder = Path(temp_dir)
             disk_model = Model(disk="Fit",
                            line_list=lines,
