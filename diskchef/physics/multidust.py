@@ -38,25 +38,29 @@ class DustPopulation:
     >>> dust = DustPopulation("some_opacity.inp", table=table, name="Default dust")
     >>> dust.write_to_table()
     >>> table  # doctest: +NORMALIZE_WHITESPACE
+    <CTable length=3>
        Radius    Dust density Dust temperature Default dust mass fraction Default dust number density Default dust temperature Default dust surface area per volume
          AU        g / cm3           K                                              1 / cm3                      K                            1 / cm
+      float64      float64        float64               float64                     float64                   float64                        float64
     ------------ ------------ ---------------- -------------------------- --------------------------- ------------------------ ------------------------------------
     1.000000e+00 1.000000e-13     1.000000e+02               1.000000e+00                7.957747e+00             1.000000e+02                         1.000000e-08
     2.000000e+00 1.000000e-14     5.000000e+01               1.000000e+00                7.957747e-01             5.000000e+01                         1.000000e-09
     3.000000e+00 1.000000e-15     2.500000e+01               1.000000e+00                7.957747e-02             2.500000e+01                         1.000000e-10
-    >>> table.meta["Dust list"][0].name
+    >>> table.dust_list[0].name
     'Default dust'
 
     >>> dust_large = DustPopulation("large_opacity.inp", table=table, name="Large dust", mass_fraction=0.3, average_size_for_chemistry=1*u.cm)
     >>> dust_large.write_to_table()
     >>> table  # doctest: +NORMALIZE_WHITESPACE
+    <CTable length=3>
        Radius    Dust density Dust temperature Default dust mass fraction Default dust number density Default dust temperature Default dust surface area per volume Large dust mass fraction Large dust number density Large dust temperature Large dust surface area per volume
          AU        g / cm3           K                                              1 / cm3                      K                            1 / cm                                                  1 / cm3                    K                          1 / cm
+      float64      float64        float64               float64                     float64                   float64                        float64                        float64                   float64                 float64                      float64
     ------------ ------------ ---------------- -------------------------- --------------------------- ------------------------ ------------------------------------ ------------------------ ------------------------- ---------------------- ----------------------------------
     1.000000e+00 1.000000e-13     1.000000e+02               1.000000e+00                7.957747e+00             1.000000e+02                         1.000000e-08             3.000000e-01              2.387324e-15           1.000000e+02                       3.000000e-14
     2.000000e+00 1.000000e-14     5.000000e+01               1.000000e+00                7.957747e-01             5.000000e+01                         1.000000e-09             3.000000e-01              2.387324e-16           5.000000e+01                       3.000000e-15
     3.000000e+00 1.000000e-15     2.500000e+01               1.000000e+00                7.957747e-02             2.500000e+01                         1.000000e-10             3.000000e-01              2.387324e-17           2.500000e+01                       3.000000e-16
-    >>> [dust.name for dust in table.meta["Dust list"]]
+    >>> [dust.name for dust in table.dust_list]
     ['Default dust', 'Large dust']
 
     >>> # Now, the total dust population exceeds the total dust mass (sum of mass_fraction != 1)
@@ -66,8 +70,10 @@ class DustPopulation:
     >>> table.dust_population_fully_set
     True
     >>> table  # doctest: +NORMALIZE_WHITESPACE
+    <CTable length=3>
        Radius    Dust density Dust temperature Default dust mass fraction Default dust number density Default dust temperature Default dust surface area per volume Large dust mass fraction Large dust number density Large dust temperature Large dust surface area per volume
          AU        g / cm3           K                                              1 / cm3                      K                            1 / cm                                                  1 / cm3                    K                          1 / cm
+      float64      float64        float64               float64                     float64                   float64                        float64                        float64                   float64                 float64                      float64
     ------------ ------------ ---------------- -------------------------- --------------------------- ------------------------ ------------------------------------ ------------------------ ------------------------- ---------------------- ----------------------------------
     1.000000e+00 1.000000e-13     1.000000e+02               7.692308e-01                6.121344e+00             1.000000e+02                         7.692308e-09             2.307692e-01              1.836403e-15           1.000000e+02                       2.307692e-14
     2.000000e+00 1.000000e-14     5.000000e+01               7.692308e-01                6.121344e-01             5.000000e+01                         7.692308e-10             2.307692e-01              1.836403e-16           5.000000e+01                       2.307692e-15
@@ -82,8 +88,10 @@ class DustPopulation:
     >>> dust_large = DustPopulation("large_opacity.inp", table=table, name="Large dust", mass_fraction=[0.2, 0.3, 0.5], average_size_for_chemistry=1*u.cm)
     >>> dust_large.write_to_table()
     >>> table  # doctest: +NORMALIZE_WHITESPACE
+    <CTable length=3>
        Radius    Dust density Default dust mass fraction Default dust number density Default dust temperature Default dust surface area per volume Large dust mass fraction Large dust number density Large dust temperature Large dust surface area per volume
          AU        g / cm3                                         1 / cm3                      K                            1 / cm                                                  1 / cm3                    K                          1 / cm
+      float64      float64             float64                     float64                   float64                        float64                        float64                   float64                 float64                      float64
     ------------ ------------ -------------------------- --------------------------- ------------------------ ------------------------------------ ------------------------ ------------------------- ---------------------- ----------------------------------
     1.000000e+00 1.000000e-13               8.000000e-01                6.366198e+00                      nan                         8.000000e-09             2.000000e-01              1.591549e-15                    nan                       2.000000e-14
     2.000000e+00 1.000000e-14               7.000000e-01                5.570423e-01                      nan                         7.000000e-10             3.000000e-01              2.387324e-16                    nan                       3.000000e-15
@@ -100,9 +108,11 @@ class DustPopulation:
     >>> table.dust_population_fully_set
     True
     >>> table  # doctest: +NORMALIZE_WHITESPACE
+    <CTable length=3>
        Radius    Dust density Default dust mass fraction Default dust number density Default dust temperature Default dust surface area per volume Large dust mass fraction Large dust number density Large dust temperature Large dust surface area per volume Asteroids mass fraction Asteroids number density Asteroids temperature Asteroids surface area per volume
          AU        g / cm3                                         1 / cm3                      K                            1 / cm                                                  1 / cm3                    K                          1 / cm                                               1 / cm3                    K                         1 / cm
-    ------------ ------------ -------------------------- --------------------------- ------------------------ ------------------------------------ ------------------------ ------------------------- ---------------------- ---------------------------------- ----------------------- ------------------------ --------------------- ---------------------------------
+      float64      float64             float64                     float64                   float64                        float64                        float64                   float64                 float64                      float64                       float64                 float64                 float64                     float64
+     ------------ ------------ -------------------------- --------------------------- ------------------------ ------------------------------------ ------------------------ ------------------------- ---------------------- ---------------------------------- ----------------------- ------------------------ --------------------- ---------------------------------
     1.000000e+00 1.000000e-13               5.333333e-01                4.244132e+00                      nan                         5.333333e-09             1.333333e-01              1.061033e-15                    nan                       1.333333e-14            3.333333e-01             2.652582e-30                   nan                      3.333333e-19
     2.000000e+00 1.000000e-14               5.384615e-01                4.284941e-01                      nan                         5.384615e-10             2.307692e-01              1.836403e-16                    nan                       2.307692e-15            2.307692e-01             1.836403e-31                   nan                      2.307692e-20
     3.000000e+00 1.000000e-15               3.333333e-01                2.652582e-02                      nan                         3.333333e-11             3.333333e-01              2.652582e-17                    nan                       3.333333e-16            3.333333e-01             2.652582e-32                   nan                      3.333333e-21
@@ -173,7 +183,7 @@ class DustPopulation:
             "{self.name} temperature"
             "{self.name} surface area per volume"
 
-        Also adds `self` to `table.meta["Dust list"]`
+        Also adds `self` to `table.dust_list`
         """
         if table is None:
             table = self.table
@@ -182,7 +192,7 @@ class DustPopulation:
         table[f"{self.name} temperature"] = self.temperature
         table[f"{self.name} surface area per volume"] = self.surface_area_per_volume
         try:
-            if self not in table.meta["Dust list"]:
-                table.meta["Dust list"].append(self)
+            if self not in table.dust_list:
+                table.dust_list.append(self)
         except KeyError:
-            table.meta["Dust list"] = [self]
+            table.dust_list = [self]

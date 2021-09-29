@@ -24,8 +24,10 @@ class ChemistryWB2014(ChemistryModel):
     >>> chemistry = ChemistryWB2014(physics)
     >>> # chemistry.table is pointing to the physics.table
     >>> chemistry.table  # doctest: +NORMALIZE_WHITESPACE
+    <CTable length=9>
        Radius       Height    Height to radius Gas density  Dust density Gas temperature Dust temperature   n(H+2H2)
          AU           AU                         g / cm3      g / cm3           K               K           1 / cm3
+      float64      float64        float64        float64      float64        float64         float64        float64
     ------------ ------------ ---------------- ------------ ------------ --------------- ---------------- ------------
     1.000000e-01 0.000000e+00     0.000000e+00 1.153290e-15 1.153290e-17    7.096268e+02     7.096268e+02 5.095483e+08
     1.000000e-01 3.500000e-02     3.500000e-01 5.024587e-34 5.024587e-36    3.548134e+03     3.548134e+03 2.219970e-10
@@ -44,16 +46,17 @@ class ChemistryWB2014(ChemistryModel):
     ['Radius', 'Height', 'Height to radius', 'Gas density', 'Dust density', 'Gas temperature', 'Dust temperature',
     'n(H+2H2)', 'H2', 'H2 number density', 'H2 column density towards star', 'H2 column density upwards', 'CO']
     >>> chemistry.table['H2']
-    <Column name='H2' dtype='float64' length=9>
-    0.5
-    0.5
-    0.5
-    0.5
-    0.5
-    0.5
-    0.5
-    0.5
-    0.5
+    <Column name='H2' dtype='float64' format='e' length=9>
+    5.000000e-01
+    5.000000e-01
+    5.000000e-01
+    5.000000e-01
+    5.000000e-01
+    5.000000e-01
+    5.000000e-01
+    5.000000e-01
+    5.000000e-01
+
     >>> # Remember that chemistry.table is just a pointer to chemistry.physics.table:
     >>> chemistry.table is chemistry.physics.table
     True

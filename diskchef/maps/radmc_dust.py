@@ -26,7 +26,7 @@ class RadMCTherm(RadMCBase):
 
     def __post_init__(self):
         super().__post_init__()
-        self.dust_species = self.chemistry.table.meta["Dust list"]
+        self.dust_species = self.chemistry.table.dust_list
         yb08 = diskchef.physics.yorke_bodenheimer.YorkeBodenheimer2008()
         if (self.star_radius is None) and (self.star_effective_temperature is not None):
             self.star_radius = yb08.radius(self.chemistry.physics.star_mass)

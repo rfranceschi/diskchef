@@ -38,8 +38,10 @@ class SciKitChemistry(ChemistryBase):
     ('CO', 'CN', 'HCN', 'HNC', 'HCO+', 'H2CO', 'N2H+', 'CS', 'C2H', 'e-')
     >>> chem.run_chemistry()
     >>> chem.table  # doctest: +NORMALIZE_WHITESPACE
+    <CTable length=9>
        Radius       Height    Height to radius Gas density  Dust density Gas temperature Dust temperature   n(H+2H2)   log(numberdens) log(temperature)      CO           CN          HCN          HNC          HCO+         H2CO         N2H+          CS          C2H           e-
          AU           AU                         g / cm3      g / cm3           K               K           1 / cm3
+      float64      float64        float64        float64      float64        float64         float64        float64        float64         float64        float64      float64      float64      float64      float64      float64      float64      float64      float64      float64
     ------------ ------------ ---------------- ------------ ------------ --------------- ---------------- ------------ --------------- ---------------- ------------ ------------ ------------ ------------ ------------ ------------ ------------ ------------ ------------ ------------
     1.000000e-01 0.000000e+00     0.000000e+00 1.153290e-15 1.153290e-17    7.096268e+02     7.096268e+02 5.095483e+08    8.474334e+00     2.851030e+00 1.664660e-10 2.075371e-13 7.722633e-14 4.447148e-14 5.587394e-12 5.853986e-16 3.863739e-17 3.872823e-16 3.844251e-13 7.300494e-05
     1.000000e-01 3.500000e-02     3.500000e-01 5.024587e-34 5.024587e-36    3.548134e+03     3.548134e+03 2.219970e-10   -9.886505e+00     3.550000e+00 7.899202e-20 6.030650e-22 1.383617e-33 3.440258e-34 1.810430e-25 8.080346e-35 3.133545e-28 8.086328e-35 3.225259e-34 6.885677e-03

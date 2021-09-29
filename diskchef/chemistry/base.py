@@ -151,8 +151,10 @@ class ChemistryModel(ChemistryBase):
     >>> chemistry = ChemistryModel(physics)
     >>> # chemistry.table is pointing to the physics.table
     >>> chemistry.table  # doctest: +NORMALIZE_WHITESPACE
+    <CTable length=9>
        Radius       Height    Height to radius Gas density  Dust density Gas temperature Dust temperature   n(H+2H2)
          AU           AU                         g / cm3      g / cm3           K               K           1 / cm3
+      float64      float64        float64        float64      float64        float64         float64        float64
     ------------ ------------ ---------------- ------------ ------------ --------------- ---------------- ------------
     1.000000e-01 0.000000e+00     0.000000e+00 1.153290e-15 1.153290e-17    7.096268e+02     7.096268e+02 5.095483e+08
     1.000000e-01 3.500000e-02     3.500000e-01 5.024587e-34 5.024587e-36    3.548134e+03     3.548134e+03 2.219970e-10
@@ -168,8 +170,10 @@ class ChemistryModel(ChemistryBase):
     >>> chemistry.run_chemistry()
     >>> # The base class just sets abundance to self.initial_abundances
     >>> chemistry.table  # doctest: +NORMALIZE_WHITESPACE
+    <CTable length=9>
        Radius       Height    Height to radius Gas density  Dust density Gas temperature Dust temperature   n(H+2H2)        H2           CO
          AU           AU                         g / cm3      g / cm3           K               K           1 / cm3
+      float64      float64        float64        float64      float64        float64         float64        float64      float64      float64
     ------------ ------------ ---------------- ------------ ------------ --------------- ---------------- ------------ ------------ ------------
      1.000000e-01 0.000000e+00     0.000000e+00 1.153290e-15 1.153290e-17    7.096268e+02     7.096268e+02 5.095483e+08 5.000000e-01 5.000000e-05
      1.000000e-01 3.500000e-02     3.500000e-01 5.024587e-34 5.024587e-36    3.548134e+03     3.548134e+03 2.219970e-10 5.000000e-01 5.000000e-05
