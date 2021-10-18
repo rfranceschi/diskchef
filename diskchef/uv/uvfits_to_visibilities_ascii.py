@@ -186,7 +186,7 @@ class UVFits:
             cube.wcs.celestial.world_axis_units[1])
         pixel_area = astropy.wcs.utils.proj_plane_pixel_area(cube.wcs.celestial) * pixel_area_units
         dxy = np.sqrt(pixel_area).to_value(u.rad)
-        cube = (cube * pixel_area).to(u.Jy)
+        cube = (cube.to(u.Jy / u.sr) * pixel_area).to(u.Jy)
 
         visibilities = []
         for i, frequency in enumerate(cube.spectral_axis):
