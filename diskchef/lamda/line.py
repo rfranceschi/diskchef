@@ -23,11 +23,11 @@ class Line:
     ('HCO+', 29.0, 31)
 
     Use `line.levels.loc` to index by J. Slices and lists, but not tuples, are allowed.
-    >>> line.levels.loc[[1,2]]  # doctest: +NORMALIZE_WHITESPACE
+    >>> line.levels.loc[[1,2]]  # doctest: +NORMALIZE_WHITESPACE +ELLIPSIS
     <CTable length=2>
        Level        Energy       Weight         J
                     1 / cm
-       int64       float64      float64       int64
+       int...      float...     float...      int...
     ------------ ------------ ------------ ------------
     2.000000e+00 2.975000e+00 3.000000e+00 1.000000e+00
     3.000000e+00 8.925000e+00 5.000000e+00 2.000000e+00

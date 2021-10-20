@@ -1,5 +1,8 @@
+import tempfile
 import logging
 from typing import List
+from datetime import date
+from pathlib import Path
 
 import numpy as np
 import pytest
@@ -8,6 +11,14 @@ from astropy import units as u
 from diskchef.fitting.fitters import BruteForceFitter, Parameter, EMCEEFitter, UltraNestFitter
 from matplotlib import pyplot as plt
 logging.basicConfig(level=logging.DEBUG)
+
+@pytest.fixture(scope="session")
+def dirname():
+    """Returns a Path object with a path to unique temporary directory"""
+    today = date.today().strftime("%d.%m.%Y")
+    dirname = Path(tempfile.mkdtemp(prefix=f"diskchef_test_{today}_"))
+    print("Test outputs are in: ", dirname)
+    return dirname
 
 def linear(
         params: List[Parameter],
@@ -80,7 +91,7 @@ def rescale_sqr(cube):
         1, 2, None
     ]
 )
-def test_linear_brute(threads):
+def test_linear_brute(threads, dirname):
     runname = f"brute_{threads}"
     x = np.linspace(1, 10, 100)
     y = linear([1, 2], x)
@@ -91,13 +102,13 @@ def test_linear_brute(threads):
     bestfit = fitter.fit(x=x, y=y)
     assert [bestfit["a"], bestfit["b"]] == [1, 2]
 
-    fitter.save(f"{runname}.sav")
-    loaded_fitter = BruteForceFitter.load(f"{runname}.sav")
+    fitter.save(dirname / f"{runname}.sav")
+    loaded_fitter = BruteForceFitter.load(dirname / f"{runname}.sav")
 
     assert [loaded_fitter.parameters_dict["a"], loaded_fitter.parameters_dict["b"]] == [1, 2]
 
     fig = loaded_fitter.corner()
-    fig.savefig(f"{runname}.pdf")
+    fig.savefig(dirname / f"{runname}.pdf")
 
 @pytest.mark.parametrize(
     "threads",
@@ -105,7 +116,7 @@ def test_linear_brute(threads):
         1, 2, None
     ]
 )
-def test_linear_emcee(threads):
+def test_linear_emcee(threads, dirname):
     runname = f"emcee_{threads}"
     x = np.linspace(1, 10, 100)
     y = linear([1, 2], x)
@@ -119,13 +130,13 @@ def test_linear_emcee(threads):
     bestfit = fitter.fit(x=x, y=y)
     assert [bestfit["a"], bestfit["b"]] == [1, 2]
 
-    fitter.save(f"{runname}.sav")
-    loaded_fitter = EMCEEFitter.load(f"{runname}.sav")
+    fitter.save(dirname / f"{runname}.sav")
+    loaded_fitter = EMCEEFitter.load(dirname / f"{runname}.sav")
 
     assert [loaded_fitter.parameters_dict["a"], loaded_fitter.parameters_dict["b"]] == [1, 2]
 
     fig = loaded_fitter.corner()
-    fig.savefig(f"{runname}.pdf")
+    fig.savefig(dirname / f"{runname}.pdf")
 
 @pytest.mark.parametrize(
     "threads",
@@ -133,8 +144,8 @@ def test_linear_emcee(threads):
         1,
     ]
 )
-def test_linear_ultranest(threads):
-    runname = f"ultranest_{threads}"
+def test_linear_ultranest(threads, dirname):
+    runname = dirname / f"ultranest_{threads}"
     x = np.linspace(1, 10, 100)
     y = linear([1, 2], x)
     assert linear_model_lnprob([1, 2], x, y) == 0
@@ -149,19 +160,19 @@ def test_linear_ultranest(threads):
     )
     bestfit = fitter.fit(x=x, y=y)
     fig = fitter.corner()
-    fig.savefig(f"{runname}/corner.pdf")
+    fig.savefig(runname/"corner.pdf")
     print(a.math_repr, b.math_repr)
     assert [bestfit["T_{atm}"], bestfit["log_{10}(M/M_\odot)"]] == [1, 2]
 
-    fitter.save(f"{runname}.sav")
-    loaded_fitter = EMCEEFitter.load(f"{runname}.sav")
+    fitter.save(str(runname) + ".sav")
+    loaded_fitter = EMCEEFitter.load(str(runname) + ".sav")
 
     assert [
                loaded_fitter.parameters_dict["T_{atm}"], loaded_fitter.parameters_dict["log_{10}(M/M_\odot)"]
            ] == [1, 2]
 
     fig = loaded_fitter.corner()
-    fig.savefig(f"{runname}.pdf")
+    fig.savefig(str(runname) + ".pdf")
 
 
 def example_lin():

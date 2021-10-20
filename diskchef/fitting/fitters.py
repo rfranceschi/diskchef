@@ -387,6 +387,9 @@ class UltraNestFitter(Fitter):
             storage_backend=self.storage_backend,
             **self.fitter_kwargs
         )
+        # TODO
+        # for sample in sampler.run_iter(..., **self.run_kwargs):
+        #     if self.sampler.mpi_rank == 0: self.corner()
         sampler.run(
             **self.run_kwargs
         )

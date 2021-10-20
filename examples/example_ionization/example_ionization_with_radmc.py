@@ -17,6 +17,8 @@ import diskchef.maps
 import diskchef.physics.multidust
 import diskchef.chemistry.scikit
 from diskchef.physics.williams_best import WilliamsBest2014
+from diskchef.maps.radmc_lines import RadMCRTSingleCall
+from diskchef.lamda.line import Line
 
 logging.basicConfig(
     level=logging.INFO,
@@ -99,34 +101,44 @@ full_chemistry.plot_chemistry("CS (simple)", "CS", axes=ax[1, 3])
 full_chemistry.plot_chemistry("N2H+ (simple)", "N2H+", axes=ax[1, 4])
 full_chemistry.plot_chemistry("HCN (simple)", "HCN", axes=ax[1, 5])
 full_chemistry.plot_chemistry("H2CO (simple)", "H2CO", axes=ax[1, 6])
-fig.savefig(folder / "report_relative.pdf")
 
+fig.savefig(folder / "report_ions.pdf")
 
-fig, ax = plt.subplots(2, 7, sharex=True, sharey=True, figsize=(35, 10))
-physics_for_full_chemistry.plot_density(axes=ax[0, 0])
-tempplot = physics_for_full_chemistry.plot_temperatures(axes=ax[1, 0])
-tempplot.contours("Gas temperature", [20, 40] * u.K)
+full_chemistry.add_co_isotopologues()
+simple_chemistry.add_co_isotopologues()
 
-diskchef.engine.plot.Plot2D(full_chemistry.table, axes=ax[0, 1], data1="CR ionization rate", data2="CR ionization rate",
-                            cmap="bone")
-diskchef.engine.plot.Plot2D(full_chemistry.table, axes=ax[1, 1], data1="Nucleon column density upwards",
-                            data2="Nucleon column density towards star", cmap="pink_r", maxdepth=1e12)
+radmc = RadMCRTSingleCall(
+    chemistry=full_chemistry, line_list=[
+        Line(name='CO J=2-1', transition=1, molecule='CO'),
+        Line(name='CO J=3-2', transition=3, molecule='CO'),
+        Line(name='13CO J=3-2', transition=2, molecule='13CO'),
+        Line(name='C18O J=3-2', transition=2, molecule='C18O'),
+    ],
+    radii_bins=100, theta_bins=100,
+    folder="full",
+    scattering_mode_max=0,
+    coordinate="DQ Tau"  # That is not going to represent a DQ Tau model, just a demo how coordinate can be supplied
+)
+radmc.create_files(channels_per_line=40, window_width=5 * u.km / u.s)
+radmc.run(
+    inclination=35.18 * u.deg, position_angle=79.19 * u.deg,
+    velocity_offset=6 * u.km / u.s, threads=8, distance=128 * u.pc,
+)
 
-diskchef.engine.plot.Plot2D(full_chemistry.table, axes=ax[0, 2], data1="X ray ionization rate",
-                            data2="X ray ionization rate",
-                            cmap="bone", maxdepth=1e12)
-diskchef.engine.plot.Plot2D(full_chemistry.table, axes=ax[1, 2], data1="G_UV",
-                            data2="G_UV", cmap="plasma", maxdepth=1e12)
-full_chemistry.plot_absolute_chemistry("CO (simple)", "CO", axes=ax[0, 3])
-full_chemistry.plot_absolute_chemistry("HCO+ (simple)", "HCO+", axes=ax[0, 4])
-full_chemistry.plot_absolute_chemistry("CN (simple)", "CN", axes=ax[0, 5])
-full_chemistry.plot_absolute_chemistry("C2H (simple)", "C2H", axes=ax[0, 6])
-full_chemistry.plot_absolute_chemistry("CS (simple)", "CS", axes=ax[1, 3])
-full_chemistry.plot_absolute_chemistry("N2H+ (simple)", "N2H+", axes=ax[1, 4])
-full_chemistry.plot_absolute_chemistry("HCN (simple)", "HCN", axes=ax[1, 5])
-full_chemistry.plot_absolute_chemistry("H2CO (simple)", "H2CO", axes=ax[1, 6])
-fig.savefig(folder / "report_absolute.pdf")
-
-
-
-
+radmc = RadMCRTSingleCall(
+    chemistry=simple_chemistry, line_list=[
+        Line(name='CO J=2-1', transition=1, molecule='CO'),
+        Line(name='CO J=3-2', transition=3, molecule='CO'),
+        Line(name='13CO J=3-2', transition=2, molecule='13CO'),
+        Line(name='C18O J=3-2', transition=2, molecule='C18O'),
+    ],
+    radii_bins=100, theta_bins=100,
+    folder="simple",
+    scattering_mode_max=0,
+    coordinate="DQ Tau",  # That is not going to represent a DQ Tau model, just a demo how coordinate can be supplied
+)
+radmc.create_files(channels_per_line=40, window_width=5 * u.km / u.s)
+radmc.run(
+    inclination=35.18 * u.deg, position_angle=79.19 * u.deg,
+    velocity_offset=6 * u.km / u.s, threads=8, distance=128 * u.pc,
+)
