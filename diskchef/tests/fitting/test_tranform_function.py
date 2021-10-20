@@ -3,9 +3,9 @@ import pytest
 
 from diskchef.fitting.fitters import UltraNestFitter, Parameter
 
-from .test_linear_fitting import tempdir
+from .test_linear_fitting import dirname
 
-def test_transform_function(tempdir):
+def test_transform_function(dirname):
     parameters = [
         Parameter("a", min=10, max=20),
         Parameter("b", min=-5, max=15)
@@ -13,7 +13,7 @@ def test_transform_function(tempdir):
     fitter = UltraNestFitter(
         lnprob=lambda params: -((params[0] - 15) ** 2 + params[1] ** 2),
         parameters=parameters,
-        log_dir=tempdir / "transform_test"
+        log_dir=dirname / "transform_test"
     )
     assert pytest.approx(fitter.transform(np.array([0.5, 0.2]))) == [15, -1]
     assert pytest.approx(fitter.transform(np.array([0.4, 0.8]))) == [14, 11]
