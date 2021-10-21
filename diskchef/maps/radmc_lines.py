@@ -23,21 +23,154 @@ from diskchef.maps.radmcrt import RadMCBase, RadMCOutput
 
 
 @dataclass
-class RadMCRT(RadMCBase):
+class RadMCRTImage(RadMCBase):
     """
     Class with interface to run RadMC3D by Cornelis Dullemond
 
     By initialization creates the basic table (`self.polar_table`) with the grid in polar RadMC3D coordinates.
+
+    Runs a generation of a continuum image, can be subclassed for line cube
     """
 
     def __post_init__(self):
         super().__post_init__()
-        self.interpolate("n(H+2H2)")
 
     @property
     def mode(self) -> str:
         """Mode of RadMC: `mctherm`, `image`, `spectrum`, `sed`"""
         return 'image'
+
+    @u.quantity_input
+    def run(
+            self, *,
+            inclination: u.deg = 0 * u.deg, position_angle: u.deg = 0 * u.deg,
+            distance: u.pc = 140 * u.pc, wav=1 * u.mm,
+            threads: int = 1, npix: int = 100,
+    ) -> None:
+        """Run RadMC3D after files were created with `create_files()`"""
+        self.logger.info("Running radmc3d")
+        start = time.time()
+        wavelength = wav.to(u.um, equivalencies=u.spectral())
+        command = (f"{self.executable} {self.mode} "
+                   f"incl {inclination.to_value(u.deg)} "
+                   f"posang {position_angle.to_value(u.deg)} "
+                   f"setthreads {threads} "
+                   f"npix {npix} "
+                   f"lambda {wavelength.value}"
+                   )
+        self.logger.info("Running radmc3d for wavelength %.4e um: %s", wavelength.value, command)
+        proc = subprocess.run(
+            command,
+            cwd=self.folder,
+            text=True,
+            capture_output=True,
+            shell=True
+        )
+        self.logger.info("radmc3d finished after %s", timedelta(seconds=time.time() - start))
+        self.catch_radmc_messages(proc)
+
+        newname = os.path.join(self.folder, f"{wavelength.value:.4e}_um_image.out")
+        shutil.move(os.path.join(self.folder, "image.out"), newname)
+        self.radmc_to_fits(
+            name=newname,
+            line=wavelength,
+            distance=distance
+        )
+
+    def radmc_to_fits(
+            self, name: PathLike, line: typing.Union[Line, u.Quantity], distance,
+    ) -> PathLike:
+        """Saves RadMC3D `image.out` files as FITS files
+
+        Args:
+            name: PathLike -- image.out-like file to process
+            line: Union[Line, wavelength-like u.Quantity]
+        Returns:
+            PathLike object of a newly created fits files
+        """
+        with redirect_stdout(io.StringIO()) as f:
+            im = radmc3dPy.image.readImage(fname=name)
+        self.logger.debug(f.getvalue())
+
+        if isinstance(line, Line):
+            restfreq = line.frequency.to_value(u.Hz)
+        else:
+            restfreq = line.to_value(u.Hz, equivalencies=u.spectral())
+
+        x_deg = ((im.x << u.cm) / distance).to(u.deg, equivalencies=u.dimensionless_angles())
+        y_deg = ((im.y << u.cm) / distance).to(u.deg, equivalencies=u.dimensionless_angles())
+        freq_hz = (im.freq << u.Hz)
+
+        x_len = len(x_deg)
+        midx_i = x_len // 2
+        midx_val = x_deg[midx_i]
+        mean_x_width = (x_deg[1:] - x_deg[:-1]).mean()
+
+        y_len = len(y_deg)
+        midy_i = y_len // 2
+        midy_val = y_deg[midy_i]
+        mean_y_width = (y_deg[1:] - y_deg[:-1]).mean()
+
+        freq_len = len(freq_hz)
+        midfreq_i = freq_len // 2
+        midfreq_hz = freq_hz[midfreq_i]
+        mean_channel_width = (freq_hz[1:] - freq_hz[:-1]).mean()
+
+        coordinate = self.coordinate
+
+        if coordinate is not None:
+            try:
+                coordinate = astropy.coordinates.SkyCoord(coordinate)
+            except ValueError:
+                coordinate = astropy.coordinates.SkyCoord.from_name(coordinate)
+        else:
+            coordinate = astropy.coordinates.SkyCoord("0h 0d")
+
+        wcs_dict = {
+            'CTYPE3': 'RA---TAN', 'CUNIT3': 'deg',
+            'CDELT3': -mean_x_width.value, 'CRPIX3': midx_i + 1,
+            'CRVAL3': midx_val.value + coordinate.ra.to_value(u.deg), 'NAXIS3': x_len,
+            'CTYPE2': 'DEC--TAN', 'CUNIT2': 'deg',
+            'CDELT2': mean_y_width.value, 'CRPIX2': midy_i + 1,
+            'CRVAL2': midy_val.value + coordinate.dec.to_value(u.deg), 'NAXIS2': y_len,
+            'CTYPE1': 'FREQ    ', 'CUNIT1': 'Hz',
+            'CDELT1': mean_channel_width.value if np.isfinite(mean_channel_width.value) else 1,
+            'CRPIX1': midfreq_i + 1, 'CRVAL1': midfreq_hz.value, 'NAXIS1': freq_len,
+        }
+
+        header = WCS(wcs_dict).to_header()
+        header["HISTORY"] = "Created with DiskCheF package"
+        header["HISTORY"] = "(G.V. Smirnov-Pinchukov, https://gitlab.com/SmirnGreg/diskchef)"
+        header["HISTORY"] = "using RadMC3D (C. Dullemond, https://github.com/dullemond/radmc3d-2.0)"
+        header["RESTFREQ"] = restfreq
+
+        cube = SpectralCube(
+            data=np.rot90(im.image * 1e23, axes=[0, 1]) << (u.Jy / u.sr),
+            wcs=WCS(wcs_dict), header=header
+        )
+
+        fitsname = name.replace(".out", ".fits")
+
+        cube.write(fitsname, overwrite=True)
+
+        self.fitsfiles.append(fitsname)
+        self.logger.info("Saved as %s and %s", name, fitsname)
+        return fitsname
+
+
+@dataclass
+class RadMCRT(RadMCRTImage):
+    """
+    Class with interface to run RadMC3D by Cornelis Dullemond
+
+    By initialization creates the basic table (`self.polar_table`) with the grid in polar RadMC3D coordinates.
+
+    Runs a generation of a line cube
+    """
+
+    def __post_init__(self):
+        super().__post_init__()
+        self.interpolate("n(H+2H2)")
 
     def create_files(self) -> None:
         """Creates all the files necessary to run RadMC3D"""
@@ -179,79 +312,6 @@ class RadMCRT(RadMCBase):
             output.file_radmc = newname
             output.file_fits = self.radmc_to_fits(newname, self.line_list[line], distance * u.pc)
         self.outputs[lineobj] = output
-
-    def radmc_to_fits(
-            self, name: PathLike, line: Line, distance,
-    ) -> PathLike:
-        """Saves RadMC3D `image.out` files as FITS files
-
-        Returns:
-            name of a newly created fits files
-        """
-        with redirect_stdout(io.StringIO()) as f:
-            im = radmc3dPy.image.readImage(fname=name)
-        self.logger.debug(f.getvalue())
-        restfreq = line.frequency.to(u.Hz).value
-
-        x_deg = ((im.x << u.cm) / distance).to(u.deg, equivalencies=u.dimensionless_angles())
-        y_deg = ((im.y << u.cm) / distance).to(u.deg, equivalencies=u.dimensionless_angles())
-        freq_hz = (im.freq << u.Hz)
-
-        x_len = len(x_deg)
-        midx_i = x_len // 2
-        midx_val = x_deg[midx_i]
-        mean_x_width = (x_deg[1:] - x_deg[:-1]).mean()
-
-        y_len = len(y_deg)
-        midy_i = y_len // 2
-        midy_val = y_deg[midy_i]
-        mean_y_width = (y_deg[1:] - y_deg[:-1]).mean()
-
-        freq_len = len(freq_hz)
-        midfreq_i = freq_len // 2
-        midfreq_hz = freq_hz[midfreq_i]
-        mean_channel_width = (freq_hz[1:] - freq_hz[:-1]).mean()
-
-        coordinate = self.coordinate
-
-        if coordinate is not None:
-            try:
-                coordinate = astropy.coordinates.SkyCoord(coordinate)
-            except ValueError:
-                coordinate = astropy.coordinates.SkyCoord.from_name(coordinate)
-        else:
-            coordinate = astropy.coordinates.SkyCoord("0h 0d")
-
-        wcs_dict = {
-            'CTYPE3': 'RA---TAN', 'CUNIT3': 'deg',
-            'CDELT3': -mean_x_width.value, 'CRPIX3': midx_i + 1,
-            'CRVAL3': midx_val.value + coordinate.ra.to_value(u.deg), 'NAXIS3': x_len,
-            'CTYPE2': 'DEC--TAN', 'CUNIT2': 'deg',
-            'CDELT2': mean_y_width.value, 'CRPIX2': midy_i + 1,
-            'CRVAL2': midy_val.value + coordinate.dec.to_value(u.deg), 'NAXIS2': y_len,
-            'CTYPE1': 'FREQ    ', 'CUNIT1': 'Hz',
-            'CDELT1': mean_channel_width.value, 'CRPIX1': midfreq_i + 1, 'CRVAL1': midfreq_hz.value, 'NAXIS1': freq_len,
-
-        }
-
-        header = WCS(wcs_dict).to_header()
-        header["HISTORY"] = "Created with DiskCheF package"
-        header["HISTORY"] = "(G.V. Smirnov-Pinchukov, https://gitlab.com/SmirnGreg/diskchef)"
-        header["HISTORY"] = "using RadMC3D (C. Dullemond, https://github.com/dullemond/radmc3d-2.0)"
-        header["RESTFREQ"] = restfreq
-
-        cube = SpectralCube(
-            data=np.rot90(im.image * 1e23, axes=[0, 1]) << (u.Jy / u.sr),
-            wcs=WCS(wcs_dict), header=header
-        )
-
-        fitsname = name.replace(".out", ".fits")
-
-        cube.write(fitsname, overwrite=True)
-
-        self.fitsfiles.append(fitsname)
-        self.logger.info("Saved as %s and %s", name, fitsname)
-        return fitsname
 
     def copy_for_propype(self, folder: PathLike = None) -> None:
         """Creates a copy of `self.fitsfiles` in a format which is ready to run them through PRODIGE pipeline"""

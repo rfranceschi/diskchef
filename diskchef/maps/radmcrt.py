@@ -135,6 +135,10 @@ class RadMCBase(MapBase):
                 self.logger.info(match.group(1))
             else:
                 self.logger.warn(match.group(1))
+        for match in re.finditer(r"ERROR:(.*\n(?:  .*\n){2,})", proc.stdout):
+            self.logger.error(match.group(1))
+
+
 
     def interpolate(self, column: str) -> None:
         """Adds a new `column` to `self.polar_table` with the data iterpolated from `self.table`"""
