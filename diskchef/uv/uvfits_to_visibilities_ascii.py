@@ -236,18 +236,21 @@ class UVFits:
         if not isinstance(data, spectral_cube.SpectralCube):
             data = spectral_cube.SpectralCube.read(data)
 
-        self.logger.debug("Data spectral axis: %s", data.spectral_axis.to(self.frequencies.unit))
+        if data.spectral_axis.unit != self.frequencies.unit:
+            data = data.with_spectral_unit(self.frequencies.unit, velocity_convention="radio")
+
+        self.logger.debug("Data spectral axis: %s", data.spectral_axis)
         self.logger.debug("UVTable spectral axis: %s", self.frequencies)
-        if not np.all(np.equal(data.spectral_axis, self.frequencies)):
-            data = data.spectral_interpolate(spectral_grid=self.frequencies)
+        if (data.spectral_axis.shape != self.frequencies.shape) or (not np.all(np.equal(data.spectral_axis, self.frequencies))):
             self.logger.info("Interpolate data to UVTable spectral grid")
+            data = data.spectral_interpolate(spectral_grid=self.frequencies)
 
         pixel_area_units = u.Unit(data.wcs.celestial.world_axis_units[0]) \
                            * u.Unit(data.wcs.celestial.world_axis_units[1])
         pixel_area = astropy.wcs.utils.proj_plane_pixel_area(data.wcs.celestial) * pixel_area_units
         dxy = np.sqrt(pixel_area).to_value(u.rad)
         self.logger.debug("Data pixel area %s and size %s radian", pixel_area, dxy)
-        data = (data * pixel_area).to(u.Jy)
+        data = (data.to(u.Jy / u.sr) * pixel_area).to(u.Jy)
         self.chi_per_channel = []
         for cube_slice, _wavelength, _re, _im, _weight in zip(
                 data, self.wavelengths, self.re.T, self.im.T, self.weight.T
