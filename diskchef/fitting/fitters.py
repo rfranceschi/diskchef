@@ -315,7 +315,7 @@ class UltraNestFitter(Fitter):
     nsteps: int = 100
     transform: Callable = None
     resume: Literal[True, 'resume', 'resume-similar', 'overwrite', 'subfolder'] = 'overwrite'
-    log_dir: Union[str, Path] = None
+    log_dir: Union[str, Path] = "ultranest"
     run_kwargs: dict = field(default_factory=dict)
 
     storage_backend: Literal['hdf5', 'csv', 'tsv'] = 'hdf5'
@@ -371,10 +371,7 @@ class UltraNestFitter(Fitter):
             self,
             *args, **kwargs
     ):
-        if self.log_dir is None:
-            self.log_dir = Path("ultranest")
-        else:
-            self.log_dir = Path(self.log_dir)
+        self.log_dir = Path(self.log_dir)
 
         lnprob = partial(self.lnprob_fixed, *args, **kwargs)
         lnprob.__name__ = self.lnprob.__name__
@@ -389,10 +386,12 @@ class UltraNestFitter(Fitter):
         )
         # TODO
         # for sample in sampler.run_iter(..., **self.run_kwargs):
-        #     if self.sampler.mpi_rank == 0: self.corner()
-        sampler.run(
-            **self.run_kwargs
-        )
+        for i, result in enumerate(sampler.run_iter(**self.run_kwargs)):
+            if self.sampler.mpi_rank == 0:
+                fig = self.corner()
+                fig.savefig(self.log_dir / f"corner_{i:06d}.pdf")
+                fig.savefig(self.log_dir / "corner.pdf")
+
 
         if sampler.use_mpi:
             from mpi4py import MPI
