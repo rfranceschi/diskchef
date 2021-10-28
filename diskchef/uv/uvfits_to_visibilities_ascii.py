@@ -179,6 +179,9 @@ class UVFits:
         plt.axis('equal')
         plt.scatter([*self.u, *(-self.u)], [*self.v, *(-self.v)], alpha=0.5, s=0.2)
 
+    def plot_total_power(self):
+        plt.plot(np.sum(np.abs(self.visibility), axis=0))
+
     def image_to_visibilities(self, file: PathLike):
         """Import cube from a FITS `file`, sample it with visibilities of this UVFITS"""
         cube = spectral_cube.SpectralCube.read(file)
@@ -202,7 +205,7 @@ class UVFits:
         uvdata_arr = visibilities_real_imag_weight.T.reshape(
             visibilities.shape[1], 1, 1, 1, visibilities.shape[0], 1, 3
         )
-        self.set_data(uvdata_arr, cube.spectral_axis)
+        self.set_data(uvdata_arr, cube.with_spectral_unit(u.Hz).spectral_axis)
         self.frequencies = cube.spectral_axis
 
     @property
