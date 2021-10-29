@@ -24,17 +24,12 @@ test:
 pages:
   stage: deploy
   script:
-    - shopt -s extglob
+    - mkdir -p public
     - pip install pdoc3 pytest-cov
     - pdoc --html diskchef --overwrite
-    - mkdir -p cache/$CI_COMMIT_BRANCH
-    - rm -rf cache/$CI_COMMIT_BRANCH/*
-    - cp -r html/diskchef/* cache/$CI_COMMIT_BRANCH/
-    - cp -r cache public
+    - cp -r html/diskchef/* public/
   artifacts:
     paths:
       - public
   only:
     - master
-
-#     when: always
