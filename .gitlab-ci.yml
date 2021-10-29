@@ -13,13 +13,14 @@ stages:
   - test
   - deploy_docs
 
-install:
+pipinstall:
   stage: install
-  - python -V               # Print out python version for debugging
-  - apt update && apt install -y gfortran mpi-default-dev
-  - pip install cython
-  - conda install -y -c conda-forge galario
-  - pip install .
+  script:
+    - python -V               # Print out python version for debugging
+    - apt update && apt install -y gfortran mpi-default-dev
+    - pip install cython
+    - conda install -y -c conda-forge galario
+    - pip install .
 
 pytest:
   stage: test
