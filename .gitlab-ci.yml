@@ -8,21 +8,39 @@ cache:
   paths:
     - .cache/pip
 
-before_script:
+stages:
+  - install
+  - test
+  - deploy_docs
+
+install:
+  stage: install
   - python -V               # Print out python version for debugging
   - apt update && apt install -y gfortran mpi-default-dev
   - pip install cython
   - conda install -y -c conda-forge galario
   - pip install .
 
-test:
+pytest:
+  stage: test
   script:
   - pip install pytest-cov
   - cd diskchef
   - pytest --doctest-modules --cov diskchef
 
+test_example:
+  stage: test
+  needs: [pytest]
+  script:
+  - cd examples
+  - python example_user_physics.py
+  - python example_wb_chemistry.py
+  - cd lines && python example_rt_lines.py && cd ..
+  - cd example_andes && python example_andes.py && cd ..
+
+
 pages:
-  stage: deploy
+  stage: deploy_docs
   script:
     - mkdir -p public
     - pip install pdoc3 pytest-cov
