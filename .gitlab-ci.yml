@@ -18,14 +18,23 @@ bootstrap:
   before_script:
     - export IMAGE="${CI_REGISTRY_IMAGE}/bootstrap:latest"
     - echo $IMAGE
-    - export IMAGE_LATEST="${DISKCHEF_IMAGE}:latest"
-    - echo $IMAGE_LATEST
   script:
     - docker login -u gitlab-ci-token -p $CI_BUILD_TOKEN $CI_REGISTRY
     - cd bootstrap
     - docker build -t $IMAGE .
     - docker push $IMAGE
-    - cd ..
+
+build-diskchef:
+  image: docker
+  stage: build-diskchef
+ 
+  services:
+    - docker:dind
+  before_script:
+    - export IMAGE_LATEST="${DISKCHEF_IMAGE}:latest"
+    - echo $IMAGE_LATEST
+  script:
+    - docker login -u gitlab-ci-token -p $CI_BUILD_TOKEN $CI_REGISTRY
     - docker build -t $IMAGE_LATEST .
     - docker push $IMAGE_LATEST
 
