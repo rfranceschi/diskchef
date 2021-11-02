@@ -41,7 +41,7 @@ build-diskchef:
     - docker build -t $IMAGE_LATEST .
     - docker push $IMAGE_LATEST
 
-
+image: ${DISKCHEF_IMAGE}
 
 
 pytest:
