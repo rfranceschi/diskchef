@@ -387,7 +387,7 @@ class UltraNestFitter(Fitter):
         )
 
         for i, result in enumerate(self.sampler.run_iter(**self.run_kwargs)):
-            if self.sampler.mpi_rank == 0:
+            if not self.sampler.use_mpi or self.sampler.mpi_rank == 0:
                 tbl = QTable(self.sampler.results['weighted_samples']['points'], names=[par.name for par in self.parameters])
                 tbl["lnprob"] = self.sampler.results['weighted_samples']['logl']
                 tbl["lnprob"][tbl["lnprob"] <= -self.INFINITY] = -np.inf
@@ -404,8 +404,6 @@ class UltraNestFitter(Fitter):
                 fig = self.corner()
                 fig.savefig(self.log_dir / f"corner_{i:06d}.pdf")
                 fig.savefig(self.log_dir / "corner.pdf")
-        else:
-            self.sampler.plot()
 
         self._post_fit()
         return self.parameters_dict
