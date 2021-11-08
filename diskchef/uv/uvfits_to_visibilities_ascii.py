@@ -115,7 +115,7 @@ class UVFits:
             self._update_table()
             self.frequencies = (
                     (self._fits.meta['CRVAL4'] +
-                     (self._fits.meta['CRPIX4'] - self.fetched_channels + 1) * self._fits.meta['CDELT4']
+                     (self.fetched_channels - self._fits.meta['CRPIX4'] + 1) * self._fits.meta['CDELT4']
                      ) * u.Hz)
         elif self.path.lower().endswith(".pkl"):
             self._fits = None
@@ -179,8 +179,12 @@ class UVFits:
         plt.axis('equal')
         plt.scatter([*self.u, *(-self.u)], [*self.v, *(-self.v)], alpha=0.5, s=0.2)
 
-    def plot_total_power(self):
-        plt.plot(np.sum(np.abs(self.visibility), axis=0))
+    def plot_total_power(self, rest_freq: u.Hz = None):
+        if  rest_freq is not None:
+            frequencies = self.frequencies.to(u.km/u.s, equivalencies=u.doppler_radio(rest_freq))
+        else:
+            frequencies = self.frequencies
+        plt.plot(frequencies, np.sum(np.abs(self.visibility), axis=0))
 
     def image_to_visibilities(self, file: PathLike):
         """Import cube from a FITS `file`, sample it with visibilities of this UVFITS"""

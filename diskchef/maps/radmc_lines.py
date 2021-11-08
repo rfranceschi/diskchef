@@ -11,6 +11,7 @@ from dataclasses import dataclass
 import astropy.coordinates
 import numpy as np
 from astropy import units as u
+from astropy import constants as c
 from astropy.wcs import WCS
 from spectral_cube import SpectralCube
 
@@ -31,6 +32,7 @@ class RadMCRTImage(RadMCBase):
 
     Runs a generation of a continuum image, can be subclassed for line cube
     """
+    velocity: u.km/u.s = 0 * u.km/u.s
 
     def __post_init__(self):
         super().__post_init__()
@@ -135,7 +137,7 @@ class RadMCRTImage(RadMCBase):
             'CRVAL2': midy_val.value + coordinate.dec.to_value(u.deg), 'NAXIS2': y_len,
             'CTYPE1': 'FREQ    ', 'CUNIT1': 'Hz',
             'CDELT1': mean_channel_width.value if np.isfinite(mean_channel_width.value) else 1,
-            'CRPIX1': midfreq_i + 1, 'CRVAL1': midfreq_hz.value, 'NAXIS1': freq_len,
+            'CRPIX1': midfreq_i + 1, 'CRVAL1': (midfreq_hz * (1 - self.velocity / c.c)).to_value(u.Hz), 'NAXIS1': freq_len,
         }
 
         header = WCS(wcs_dict).to_header()
