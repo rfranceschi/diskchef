@@ -11,6 +11,7 @@ from astropy import units as u
 from astropy.table import Table, QTable
 import astropy.wcs
 from matplotlib import pyplot as plt
+import matplotlib.axes
 import spectral_cube
 
 try:
@@ -175,16 +176,23 @@ class UVFits:
     def wavelengths(self):
         return c.c / self.frequencies
 
-    def plot_uvgrid(self):
-        plt.axis('equal')
-        plt.scatter([*self.u, *(-self.u)], [*self.v, *(-self.v)], alpha=0.5, s=0.2)
+    def plot_uvgrid(self, axes: matplotlib.axes.Axes = None):
+        if axes is None:
+            _, axes = plt.subplots(1)
+            axes.set_aspect('equal')
+        axes.scatter([*self.u, *(-self.u)], [*self.v, *(-self.v)], alpha=0.5, s=0.2)
 
-    def plot_total_power(self, rest_freq: u.Hz = None):
-        if  rest_freq is not None:
-            frequencies = self.frequencies.to(u.km/u.s, equivalencies=u.doppler_radio(rest_freq))
+    def plot_total_power(self, rest_freq: u.Hz = None, axes: matplotlib.axes.Axes = None):
+        if rest_freq is not None:
+            frequencies = self.frequencies.to(u.km / u.s, equivalencies=u.doppler_radio(rest_freq))
         else:
             frequencies = self.frequencies
-        plt.plot(frequencies, np.sum(np.abs(self.visibility), axis=0))
+        if axes is None:
+            _, axes = plt.subplots(1)
+        axes.plot(
+            frequencies,
+            np.sum(np.abs((self.visibility * self.weight) / self.weight.sum()), axis=0)
+        )
 
     def image_to_visibilities(self, file: PathLike):
         """Import cube from a FITS `file`, sample it with visibilities of this UVFITS"""
@@ -196,10 +204,12 @@ class UVFits:
         cube = (cube.to(u.Jy / u.sr) * pixel_area).to(u.Jy)
 
         visibilities = []
-        for i, frequency in enumerate(cube.spectral_axis):
+        for i, frequency in enumerate(
+            cube.with_spectral_unit(u.Hz, velocity_convention="radio").spectral_axis
+        ):
             wl = (c.c / frequency).si
-            u_wavelengths = (self.u / wl).si
-            v_wavelengths = (self.v / wl).si
+            u_wavelengths = (self.u / wl).to_value(u.dimensionless_unscaled)
+            v_wavelengths = (self.v / wl).to_value(u.dimensionless_unscaled)
             vis = g_double.sampleImage(cube[i], dxy, u_wavelengths, v_wavelengths)
             visibilities.append(vis)
         visibilities = np.array(visibilities)
