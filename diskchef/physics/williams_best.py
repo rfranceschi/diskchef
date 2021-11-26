@@ -2,6 +2,7 @@ from dataclasses import dataclass
 from functools import cached_property
 
 import numpy as np
+import pytest
 import scipy.integrate
 import scipy.interpolate
 from astropy import units as u, constants as const
@@ -183,3 +184,50 @@ class WilliamsBest2014(ParametrizedPhysics):
         drop = np.where(r < self.inner_radius, self.inner_depletion, 1)
         return drop * self.column_density_norm * (r / self.tapering_radius) ** (-self.tapering_gamma) \
                * np.exp(-(r / self.tapering_radius) ** (2 - self.tapering_gamma))
+
+
+@dataclass
+class WilliamsBest100au(WilliamsBest2014):
+    """
+    A subclass of WilliamsBest2014 which uses temperatures at 100 au rather than at 1 au for a more robust fitting
+
+    These defintions are equivalent:
+    >>> t_a, t_m, sl = 100, 1000, 0.55
+    >>> original = WilliamsBest2014(vertical_bins=3, radial_bins=3,
+    ...     midplane_temperature_1au=t_a * u.K, atmosphere_temperature_1au=t_m * u.K,
+    ...     temperature_slope=sl)
+    >>> at_100_au = WilliamsBest100au(vertical_bins=3, radial_bins=3,
+    ...     midplane_temperature_100au=t_a * u.K / 100**sl, atmosphere_temperature_100au = t_m * u.K / 100**sl,
+    ...     temperature_slope=sl)
+    >>> original.table     # doctest: +NORMALIZE_WHITESPACE
+    <CTable length=9>
+       Radius       Height    Height to radius Gas density  Dust density Gas temperature Dust temperature
+         AU           AU                         g / cm3      g / cm3           K               K
+      float64      float64        float64        float64      float64        float64         float64
+    ------------ ------------ ---------------- ------------ ------------ --------------- ----------------
+    1.000000e-01 0.000000e+00     0.000000e+00 2.102690e-15 2.102690e-17    3.548134e+02     3.548134e+02
+    1.000000e-01 3.500000e-02     3.500000e-01 3.080145e-34 3.080145e-36    3.548134e+03     3.548134e+03
+    1.000000e-01 7.000000e-02     7.000000e-01 3.629823e-72 3.629823e-74    3.548134e+03     3.548134e+03
+    7.071068e+00 0.000000e+00     0.000000e+00 3.593866e-13 3.593866e-15    3.410227e+01     3.410227e+01
+    7.071068e+00 2.474874e+00     3.500000e-01 2.138733e-17 2.138733e-19    3.410227e+02     3.410227e+02
+    7.071068e+00 4.949747e+00     7.000000e-01 5.660244e-23 5.660244e-25    3.410227e+02     3.410227e+02
+    5.000000e+02 0.000000e+00     0.000000e+00 4.346110e-20 4.346110e-22    3.277680e+00     3.277680e+00
+    5.000000e+02 1.750000e+02     3.500000e-01 4.525949e-22 4.525949e-24    3.277680e+01     3.277680e+01
+    5.000000e+02 3.500000e+02     7.000000e-01 6.835933e-23 6.835933e-25    3.277680e+01     3.277680e+01
+    >>> str(at_100_au.table) == str(original.table)
+    True
+    """
+    midplane_temperature_100au: u.K = 15.89 * u.K
+    atmosphere_temperature_100au: u.K = 281.8 * u.K
+    midplane_temperature_1au: u.K = None
+    atmosphere_temperature_1au: u.K = None
+
+    def __post_init__(self):
+        super().__post_init__()
+        if self.midplane_temperature_1au is not None:
+            self.logger.warning("'midplane_temperature_1au' is ignored, use 'midplane_temperature_100au' instead")
+        if self.atmosphere_temperature_1au is not None:
+            self.logger.warning("'atmosphere_temperature_1au' is ignored, use 'atmosphere_temperature_100au' instead")
+
+        self.midplane_temperature_1au = self.midplane_temperature_100au * 100 ** self.temperature_slope
+        self.atmosphere_temperature_1au = self.atmosphere_temperature_100au * 100 ** self.temperature_slope
