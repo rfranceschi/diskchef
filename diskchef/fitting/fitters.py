@@ -317,6 +317,7 @@ class UltraNestFitter(Fitter):
     resume: Literal[True, 'resume', 'resume-similar', 'overwrite', 'subfolder'] = 'overwrite'
     log_dir: Union[str, Path] = "ultranest"
     run_kwargs: dict = field(default_factory=dict)
+    plot_corner: bool = True
 
     storage_backend: Literal['hdf5', 'csv', 'tsv'] = 'hdf5'
 
@@ -388,7 +389,8 @@ class UltraNestFitter(Fitter):
 
         for i, result in enumerate(self.sampler.run_iter(**self.run_kwargs)):
             if not self.sampler.use_mpi or self.sampler.mpi_rank == 0:
-                tbl = QTable(self.sampler.results['weighted_samples']['points'], names=[par.name for par in self.parameters])
+                tbl = QTable(self.sampler.results['weighted_samples']['points'],
+                             names=[par.name for par in self.parameters])
                 tbl["lnprob"] = self.sampler.results['weighted_samples']['logl']
                 tbl["lnprob"][tbl["lnprob"] <= -self.INFINITY] = -np.inf
                 tbl["weight"] = self.sampler.results['weighted_samples']['weights']
@@ -401,9 +403,12 @@ class UltraNestFitter(Fitter):
                     parameter.fitted_error_down = results['mean'][i] - results['errlo'][i]
                     parameter.fitted_error = results['stdev'][i]
 
-                fig = self.corner()
-                fig.savefig(self.log_dir / f"corner_{i:06d}.pdf")
-                fig.savefig(self.log_dir / "corner.pdf")
+                if self.plot_corner:
+                    fig = self.corner()
+                    fig.savefig(self.log_dir / f"corner_{i:06d}.pdf")
+                    fig.savefig(self.log_dir / "corner.pdf")
 
-        self._post_fit()
+        if not self.sampler.use_mpi or self.sampler.mpi_rank == 0:
+            self._post_fit()
+
         return self.parameters_dict
