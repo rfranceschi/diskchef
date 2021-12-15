@@ -17,7 +17,7 @@ from astropy import units as u
 from astropy.table import QTable
 import corner
 from matplotlib import pyplot as plt
-
+import scipy.optimize
 from emcee import EnsembleSampler
 from matplotlib.colors import LogNorm
 
@@ -410,5 +410,26 @@ class UltraNestFitter(Fitter):
 
         if not self.sampler.use_mpi or self.sampler.mpi_rank == 0:
             self._post_fit()
+
+        return self.parameters_dict
+
+
+@dataclass
+class SciPyFitter(Fitter):
+    method: Union[None, str] = None
+
+    def fit(
+            self,
+            *args, **kwargs
+    ):
+        scipy_result: scipy.optimize.OptimizeResult = scipy.optimize.minimize(
+            self.lnprob,
+            *args,
+            **kwargs
+        )
+        self.scipy_result = scipy_result
+
+        for parameter, result in zip(self.parameters, self.scipy_result.x):
+            parameter.fitted = result
 
         return self.parameters_dict
