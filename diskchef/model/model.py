@@ -111,6 +111,7 @@ class Model:
     vertical_bins_rt: int = None
     folder: pathlib.Path = None
     physics_class: Type[diskchef.physics.base.PhysicsModel] = WilliamsBest2014
+    scikit_model: PathLike = None
 
     def __post_init__(self):
         if self.folder is None:
@@ -133,7 +134,7 @@ class Model:
                               table=self.disk_physical_model.table,
                               name="DIANA dust")
         dust.write_to_table()
-        self.disk_chemical_model = SciKitChemistry(self.disk_physical_model)
+        self.disk_chemical_model = SciKitChemistry(self.disk_physical_model, model=self.scikit_model)
         if self.run:
             self.run_simulation()
 
