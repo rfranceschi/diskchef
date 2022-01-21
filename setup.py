@@ -19,7 +19,7 @@ setup(
         'uvplot',
         'spectral_cube >= 0.6.0',
         'radmc3dPy @ git+https://github.com/dullemond/radmc3d-2.0.git#subdirectory=python/radmc3dPy',
-        'sklearn',
+        'scikit-learn ~= 1.0.1',
         'emcee',
         'corner',
         'ultranest >= 3.3.3',
