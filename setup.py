@@ -3,7 +3,12 @@ from setuptools import setup, find_namespace_packages
 setup(
     name='diskchef',
     packages=find_namespace_packages(include=["diskchef*"], exclude=["diskchef.tests*"]),
-    package_data={'diskchef.lamda': ['*.dat']},
+    package_data={
+        'diskchef.lamda.files': ['*.dat'],
+        'diskchef.chemistry.scikit_estimators': ['*.pkl'],
+        'diskchef.dust_opacity.files': ['*.dat'],
+        'diskchef.physics.data': ['*.dat'],
+    },
     url='https://gitlab.com/SmirnGreg/diskchef',
     license='(c) authors',
     author='Grigorii V. Smirnov-Pinchukov',
@@ -19,7 +24,7 @@ setup(
         'uvplot',
         'spectral_cube >= 0.6.0',
         'radmc3dPy @ git+https://github.com/dullemond/radmc3d-2.0.git#subdirectory=python/radmc3dPy',
-        'scikit-learn ~= 1.0.1',
+        'scikit-learn == 1.0.1',
         'emcee',
         'corner',
         'ultranest >= 3.3.3',
