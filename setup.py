@@ -6,7 +6,7 @@ setup(
     package_data={
         'diskchef.lamda.files': ['*.dat'],
         'diskchef.chemistry.scikit_estimators': ['*.pkl'],
-        'diskchef.dust_opacity.files': ['*.dat'],
+        'diskchef.dust_opacity.files': ['*.inp'],
         'diskchef.physics.data': ['*.dat'],
     },
     url='https://gitlab.com/SmirnGreg/diskchef',
