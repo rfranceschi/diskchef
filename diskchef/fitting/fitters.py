@@ -17,7 +17,7 @@ from astropy import units as u
 from astropy.table import QTable
 import corner
 from matplotlib import pyplot as plt
-
+import scipy.optimize
 from emcee import EnsembleSampler
 from matplotlib.colors import LogNorm
 
@@ -315,8 +315,9 @@ class UltraNestFitter(Fitter):
     nsteps: int = 100
     transform: Callable = None
     resume: Literal[True, 'resume', 'resume-similar', 'overwrite', 'subfolder'] = 'overwrite'
-    log_dir: Union[str, Path] = None
+    log_dir: Union[str, Path] = "ultranest"
     run_kwargs: dict = field(default_factory=dict)
+    plot_corner: bool = True
 
     storage_backend: Literal['hdf5', 'csv', 'tsv'] = 'hdf5'
 
@@ -334,6 +335,7 @@ class UltraNestFitter(Fitter):
         if self.transform is None:
             self.transform = self.rescale
 
+        self.sampler = None
         for key, value in self.DEFAULT_FOR_RUN_KWARGS.items():
             if key not in self.run_kwargs:
                 self.run_kwargs[key] = value
@@ -371,14 +373,11 @@ class UltraNestFitter(Fitter):
             self,
             *args, **kwargs
     ):
-        if self.log_dir is None:
-            self.log_dir = Path("ultranest")
-        else:
-            self.log_dir = Path(self.log_dir)
+        self.log_dir = Path(self.log_dir)
 
         lnprob = partial(self.lnprob_fixed, *args, **kwargs)
         lnprob.__name__ = self.lnprob.__name__
-        sampler = ultranest.ReactiveNestedSampler(
+        self.sampler = ultranest.ReactiveNestedSampler(
             [str(param) for param in self.parameters],
             lnprob,
             self.transform,
@@ -387,35 +386,50 @@ class UltraNestFitter(Fitter):
             storage_backend=self.storage_backend,
             **self.fitter_kwargs
         )
-        # TODO
-        # for sample in sampler.run_iter(..., **self.run_kwargs):
-        #     if self.sampler.mpi_rank == 0: self.corner()
-        sampler.run(
-            **self.run_kwargs
+
+        for i, result in enumerate(self.sampler.run_iter(**self.run_kwargs)):
+            if not self.sampler.use_mpi or self.sampler.mpi_rank == 0:
+                tbl = QTable(self.sampler.results['weighted_samples']['points'],
+                             names=[par.name for par in self.parameters])
+                tbl["lnprob"] = self.sampler.results['weighted_samples']['logl']
+                tbl["lnprob"][tbl["lnprob"] <= -self.INFINITY] = -np.inf
+                tbl["weight"] = self.sampler.results['weighted_samples']['weights']
+                self._table = tbl
+
+                results = self.sampler.results['posterior']
+                for i, parameter in enumerate(self.parameters):
+                    parameter.fitted = results['mean'][i]
+                    parameter.fitted_error_up = results['errup'][i] - results['mean'][i]
+                    parameter.fitted_error_down = results['mean'][i] - results['errlo'][i]
+                    parameter.fitted_error = results['stdev'][i]
+
+                if self.plot_corner:
+                    fig = self.corner()
+                    fig.savefig(self.log_dir / f"corner_{i:06d}.pdf")
+                    fig.savefig(self.log_dir / "corner.pdf")
+
+        if not self.sampler.use_mpi or self.sampler.mpi_rank == 0:
+            self._post_fit()
+
+        return self.parameters_dict
+
+
+@dataclass
+class SciPyFitter(Fitter):
+    method: Union[None, str] = None
+
+    def fit(
+            self,
+            *args, **kwargs
+    ):
+        scipy_result: scipy.optimize.OptimizeResult = scipy.optimize.minimize(
+            self.lnprob,
+            *args,
+            **kwargs
         )
+        self.scipy_result = scipy_result
 
-        if sampler.use_mpi:
-            from mpi4py import MPI
-            comm = MPI.COMM_WORLD
-            rank = comm.Get_rank()
-            if rank == 0:
-                sampler.plot()
-        else:
-            sampler.plot()
-        self.sampler = sampler
+        for parameter, result in zip(self.parameters, self.scipy_result.x):
+            parameter.fitted = result
 
-        results = sampler.results['posterior']
-
-        tbl = QTable(sampler.results['weighted_samples']['points'], names=[par.name for par in self.parameters])
-        tbl["lnprob"] = sampler.results['weighted_samples']['logl']
-        tbl["lnprob"][tbl["lnprob"] <= -self.INFINITY] = -np.inf
-        tbl["weight"] = sampler.results['weighted_samples']['weights']
-        self._table = tbl
-
-        for i, parameter in enumerate(self.parameters):
-            parameter.fitted = results['mean'][i]
-            parameter.fitted_error_up = results['errup'][i] - results['mean'][i]
-            parameter.fitted_error_down = results['mean'][i] - results['errlo'][i]
-            parameter.fitted_error = results['stdev'][i]
-        self._post_fit()
         return self.parameters_dict

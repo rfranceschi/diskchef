@@ -8,6 +8,7 @@ from divan import Divan
 
 from diskchef.chemistry.scikit import SciKitChemistry
 from diskchef.maps import RadMCTherm
+from diskchef.maps.radmc_lines import RadMCRTImage
 from diskchef.physics.williams_best import WilliamsBest2014
 from diskchef.physics.multidust import DustPopulation
 from diskchef.dust_opacity.dust_files import dust_files
@@ -33,13 +34,13 @@ dust.write_to_table()
 
 chem = SciKitChemistry(physics)
 
-map = RadMCTherm(
+mctherm = RadMCTherm(
     chemistry=chem,
-    folder="example_dust"
+    folder="radmc"
 )
-map.create_files()
-map.run(threads=8)
-map.read_dust_temperature()
+mctherm.create_files()
+mctherm.run(threads=8)
+mctherm.read_dust_temperature()
 
 print(chem.table[0:5])
 
@@ -50,5 +51,15 @@ chem.table['C18O'] = chem.table['CO'] / 560
 fig, ax = plt.subplots(2, figsize=(5, 10))
 chem.physics.plot_density(axes=ax[0])
 Plot2D(chem.table, axes=ax[1], data1="RadMC Dust temperature", data2="Original Dust temperature")
+fig.savefig("figs.pdf")
 
-fig.savefig("example_dust/figs.pdf")
+image = RadMCRTImage(
+    chemistry=chem,
+    folder="radmc",
+    scattering_mode_max=0
+)
+image.create_files()
+image.run(
+    inclination=10 * u.deg, position_angle=30 * u.deg,
+    wav=1 * u.mm
+)

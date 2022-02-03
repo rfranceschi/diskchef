@@ -111,6 +111,7 @@ class Model:
     vertical_bins_rt: int = None
     folder: pathlib.Path = None
     physics_class: Type[diskchef.physics.base.PhysicsModel] = WilliamsBest2014
+    scikit_model: PathLike = None
 
     def __post_init__(self):
         if self.folder is None:
@@ -133,7 +134,7 @@ class Model:
                               table=self.disk_physical_model.table,
                               name="DIANA dust")
         dust.write_to_table()
-        self.disk_chemical_model = SciKitChemistry(self.disk_physical_model)
+        self.disk_chemical_model = SciKitChemistry(self.disk_physical_model, model=self.scikit_model)
         if self.run:
             self.run_simulation()
 
@@ -164,7 +165,9 @@ class Model:
 
     def image(
             self,
-            radii_bins=100, theta_bins=100,
+            radii_bins: int = 100, theta_bins: int = 100,
+            run_kwargs: dict = None, window_width: u.km/u.s = 15 * u.km/u.s,
+            **kwargs
     ):
         """Run line radiative transfer"""
         folder_rt_gas = self.folder / "radmc_gas"
@@ -173,15 +176,17 @@ class Model:
         disk_map = RadMCRTSingleCall(
             chemistry=self.disk_chemical_model, line_list=self.line_list,
             radii_bins=radii_bins, theta_bins=theta_bins,
-            folder=folder_rt_gas,
+            folder=folder_rt_gas, **kwargs
         )
 
-        disk_map.create_files(channels_per_line=self.channels, window_width=15 * (u.km / u.s))
+        disk_map.create_files(channels_per_line=self.channels, window_width=window_width)
 
+        if run_kwargs is None: run_kwargs = {}
         disk_map.run(inclination=self.inc,
                      position_angle=self.PA,
                      distance=self.distance,
                      npix=self.npix,
+                     **run_kwargs
                      )
 
     def chemistry(self):

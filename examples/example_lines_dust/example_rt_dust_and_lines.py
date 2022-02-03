@@ -3,8 +3,6 @@ from astropy import units as u
 import os
 from matplotlib import pyplot as plt
 
-from divan import Divan
-
 from diskchef.chemistry.scikit import SciKitChemistry
 from diskchef.chemistry import NonzeroChemistryWB2014
 from diskchef.maps import RadMCTherm, RadMCRTSingleCall

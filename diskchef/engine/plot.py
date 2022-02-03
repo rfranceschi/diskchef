@@ -108,8 +108,8 @@ class Plot2D(Plot):
                 minlevel = np.round(np.log10(self.norm.vmin), 1)
                 maxlevel = np.round(np.log10(self.norm.vmax), 1)
             else:
-                self.cbar_formatter = None
-            # as we need to convert self.levels to correct units and leave dimentionless
+                self.cbar_formatter = LogFormatterMathtext()
+            # as we need to convert self.levels to correct units and leave dimensionless
             # noinspection PyTypeChecker
             self.levels = np.logspace(minlevel, maxlevel, 13)
         else:

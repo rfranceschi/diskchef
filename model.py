@@ -7,7 +7,7 @@ from diskchef.lamda.line import Line
 from diskchef.maps import RadMCTherm, RadMCRTSingleCall
 from diskchef.physics.multidust import DustPopulation
 from diskchef.physics.williams_best import WilliamsBest2014
-from divan import Divan
+
 from functools import cached_property
 from matplotlib import colors
 from pathlib import Path
@@ -106,19 +106,20 @@ class ProposalModel:
         self.disk_chemical_model.table['13C18O'] = self.disk_chemical_model.table['CO'] / (77 * 560)
 
     def plot(self):
-        dvn = Divan(matplotlib_style='divan.mplstyle')
-        dvn.physical_structure = self.disk_chemical_model.table
-        dvn.chemical_structure = self.disk_chemical_model.table
-        dvn.generate_figure_volume_densities(extra_gas_to_dust=100)
-        dvn.generate_figure_temperatures()  # gas_temperature=disk_chemical_model.table["Original Dust temperature"])
-        dvn.generate_figure(
-            data1='Original Dust temperature',
-            data2='RadMC Dust temperature',
-            r=self.disk_chemical_model.table.r,
-            z=self.disk_chemical_model.table.z
-        )
-        self.disk_chemical_model.physics.plot_density()
-        self.disk_chemical_model.plot_chemistry()
-        dvn.generate_figure_chemistry(spec1="HCO+", spec2="CO", normalizer=colors.LogNorm());
-        dvn_figure = self.folder / "figs.pdf"
-        dvn.save_figures_pdf(dvn_figure)
+        raise NotImplementedError("Deprecated")
+        # dvn = Divan(matplotlib_style='divan.mplstyle')
+        # dvn.physical_structure = self.disk_chemical_model.table
+        # dvn.chemical_structure = self.disk_chemical_model.table
+        # dvn.generate_figure_volume_densities(extra_gas_to_dust=100)
+        # dvn.generate_figure_temperatures()  # gas_temperature=disk_chemical_model.table["Original Dust temperature"])
+        # dvn.generate_figure(
+        #     data1='Original Dust temperature',
+        #     data2='RadMC Dust temperature',
+        #     r=self.disk_chemical_model.table.r,
+        #     z=self.disk_chemical_model.table.z
+        # )
+        # self.disk_chemical_model.physics.plot_density()
+        # self.disk_chemical_model.plot_chemistry()
+        # dvn.generate_figure_chemistry(spec1="HCO+", spec2="CO", normalizer=colors.LogNorm());
+        # dvn_figure = self.folder / "figs.pdf"
+        # dvn.save_figures_pdf(dvn_figure)

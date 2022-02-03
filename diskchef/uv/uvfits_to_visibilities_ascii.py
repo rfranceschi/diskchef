@@ -11,6 +11,7 @@ from astropy import units as u
 from astropy.table import Table, QTable
 import astropy.wcs
 from matplotlib import pyplot as plt
+import matplotlib.axes
 import spectral_cube
 
 try:
@@ -115,7 +116,7 @@ class UVFits:
             self._update_table()
             self.frequencies = (
                     (self._fits.meta['CRVAL4'] +
-                     (self._fits.meta['CRPIX4'] - self.fetched_channels + 1) * self._fits.meta['CDELT4']
+                     (self.fetched_channels - self._fits.meta['CRPIX4'] + 1) * self._fits.meta['CDELT4']
                      ) * u.Hz)
         elif self.path.lower().endswith(".pkl"):
             self._fits = None
@@ -175,9 +176,23 @@ class UVFits:
     def wavelengths(self):
         return c.c / self.frequencies
 
-    def plot_uvgrid(self):
-        plt.axis('equal')
-        plt.scatter([*self.u, *(-self.u)], [*self.v, *(-self.v)], alpha=0.5, s=0.2)
+    def plot_uvgrid(self, axes: matplotlib.axes.Axes = None):
+        if axes is None:
+            _, axes = plt.subplots(1)
+            axes.set_aspect('equal')
+        axes.scatter([*self.u, *(-self.u)], [*self.v, *(-self.v)], alpha=0.5, s=0.2)
+
+    def plot_total_power(self, rest_freq: u.Hz = None, axes: matplotlib.axes.Axes = None):
+        if rest_freq is not None:
+            frequencies = self.frequencies.to(u.km / u.s, equivalencies=u.doppler_radio(rest_freq))
+        else:
+            frequencies = self.frequencies
+        if axes is None:
+            _, axes = plt.subplots(1)
+        axes.plot(
+            frequencies,
+            np.sum(np.abs((self.visibility * self.weight) / self.weight.sum()), axis=0)
+        )
 
     def image_to_visibilities(self, file: PathLike):
         """Import cube from a FITS `file`, sample it with visibilities of this UVFITS"""
@@ -189,10 +204,12 @@ class UVFits:
         cube = (cube.to(u.Jy / u.sr) * pixel_area).to(u.Jy)
 
         visibilities = []
-        for i, frequency in enumerate(cube.spectral_axis):
+        for i, frequency in enumerate(
+            cube.with_spectral_unit(u.Hz, velocity_convention="radio").spectral_axis
+        ):
             wl = (c.c / frequency).si
-            u_wavelengths = (self.u / wl).si
-            v_wavelengths = (self.v / wl).si
+            u_wavelengths = (self.u / wl).to_value(u.dimensionless_unscaled)
+            v_wavelengths = (self.v / wl).to_value(u.dimensionless_unscaled)
             vis = g_double.sampleImage(cube[i], dxy, u_wavelengths, v_wavelengths)
             visibilities.append(vis)
         visibilities = np.array(visibilities)
@@ -202,7 +219,7 @@ class UVFits:
         uvdata_arr = visibilities_real_imag_weight.T.reshape(
             visibilities.shape[1], 1, 1, 1, visibilities.shape[0], 1, 3
         )
-        self.set_data(uvdata_arr, cube.spectral_axis)
+        self.set_data(uvdata_arr, cube.with_spectral_unit(u.Hz).spectral_axis)
         self.frequencies = cube.spectral_axis
 
     @property
@@ -236,18 +253,21 @@ class UVFits:
         if not isinstance(data, spectral_cube.SpectralCube):
             data = spectral_cube.SpectralCube.read(data)
 
-        self.logger.debug("Data spectral axis: %s", data.spectral_axis.to(self.frequencies.unit))
+        if data.spectral_axis.unit != self.frequencies.unit:
+            data = data.with_spectral_unit(self.frequencies.unit, velocity_convention="radio")
+
+        self.logger.debug("Data spectral axis: %s", data.spectral_axis)
         self.logger.debug("UVTable spectral axis: %s", self.frequencies)
-        if not np.all(np.equal(data.spectral_axis, self.frequencies)):
-            data = data.spectral_interpolate(spectral_grid=self.frequencies)
+        if (data.spectral_axis.shape != self.frequencies.shape) or (not np.all(np.equal(data.spectral_axis, self.frequencies))):
             self.logger.info("Interpolate data to UVTable spectral grid")
+            data = data.spectral_interpolate(spectral_grid=self.frequencies)
 
         pixel_area_units = u.Unit(data.wcs.celestial.world_axis_units[0]) \
                            * u.Unit(data.wcs.celestial.world_axis_units[1])
         pixel_area = astropy.wcs.utils.proj_plane_pixel_area(data.wcs.celestial) * pixel_area_units
         dxy = np.sqrt(pixel_area).to_value(u.rad)
         self.logger.debug("Data pixel area %s and size %s radian", pixel_area, dxy)
-        data = (data * pixel_area).to(u.Jy)
+        data = (data.to(u.Jy / u.sr) * pixel_area).to(u.Jy)
         self.chi_per_channel = []
         for cube_slice, _wavelength, _re, _im, _weight in zip(
                 data, self.wavelengths, self.re.T, self.im.T, self.weight.T

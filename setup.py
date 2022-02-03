@@ -6,7 +6,8 @@ setup(
     package_data={
         'diskchef.lamda.files': ['*.dat'],
         'diskchef.chemistry.scikit_estimators': ['*.pkl'],
-        'diskchef.dust_opacity.files': ['*.inp']
+        'diskchef.dust_opacity.files': ['*.inp'],
+        'diskchef.physics.data': ['*.dat'],
     },
     url='https://gitlab.com/SmirnGreg/diskchef',
     license='(c) authors',
@@ -21,9 +22,9 @@ setup(
         'tqdm',
         'chemical_names @ git+https://gitlab.com/SmirnGreg/chemical_names.git',
         'uvplot',
-        'spectral_cube',
+        'spectral_cube >= 0.6.0',
         'radmc3dPy @ git+https://github.com/dullemond/radmc3d-2.0.git#subdirectory=python/radmc3dPy',
-        'sklearn',
+        'scikit-learn == 1.0.1',
         'emcee',
         'corner',
         'ultranest >= 3.3.3',
