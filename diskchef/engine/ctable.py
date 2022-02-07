@@ -231,7 +231,7 @@ class CTable(QTable):
             raise NotImplementedError("Column density is currently only implemented for zr grids")
 
     def check_zeros(self, column, nearest=True):
-        """Replaces zeros in `table[column]` with the second smallest by absolute value element"""
+        """Replaces zeros in `self.table[column]` with the second smallest by absolute value element"""
         values_set = sorted(set(np.abs(self[column])))
         if 0 in u.Quantity(self[column]).value:
             warnings.warn("Found zeros in %s" % column)

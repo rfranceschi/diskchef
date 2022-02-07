@@ -404,9 +404,13 @@ class UltraNestFitter(Fitter):
                     parameter.fitted_error = results['stdev'][i]
 
                 if self.plot_corner:
-                    fig = self.corner()
-                    fig.savefig(self.log_dir / f"corner_{i:06d}.pdf")
-                    fig.savefig(self.log_dir / "corner.pdf")
+                    try:
+                        fig = self.corner()
+                        fig.savefig(self.log_dir / f"corner_{i:06d}.pdf")
+                        fig.savefig(self.log_dir / "corner.pdf")
+                    except ValueError as e:
+                        self.logger.error("Could not make corner plot for %d:", i)
+                        self.logger.error(e)
 
         if not self.sampler.use_mpi or self.sampler.mpi_rank == 0:
             self._post_fit()
