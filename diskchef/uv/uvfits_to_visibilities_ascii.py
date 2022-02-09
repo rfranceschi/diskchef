@@ -210,7 +210,7 @@ class UVFits:
             wl = (c.c / frequency).si
             u_wavelengths = (self.u / wl).to_value(u.dimensionless_unscaled)
             v_wavelengths = (self.v / wl).to_value(u.dimensionless_unscaled)
-            vis = g_double.sampleImage(cube[i], dxy, u_wavelengths, v_wavelengths)
+            vis = g_double.sampleImage(cube[i], dxy, u_wavelengths, v_wavelengths, origin='lower')
             visibilities.append(vis)
         visibilities = np.array(visibilities)
         visibilities_real_imag_weight = np.array(
@@ -280,7 +280,8 @@ class UVFits:
                 vis_obs_re=_re.astype('float64').to_value(u.Jy),
                 vis_obs_im=_im.astype('float64').to_value(u.Jy),
                 vis_obs_w=_weight.astype('float64').to_value(u.Jy ** -2),
-                check=check
+                check=check,
+                origin='lower'
             )
             self.chi_per_channel.append(chi_per_channel)
         return np.sum(self.chi_per_channel)
