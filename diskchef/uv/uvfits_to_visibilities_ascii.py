@@ -284,4 +284,4 @@ class UVFits:
                 origin='lower'
             )
             self.chi_per_channel.append(chi_per_channel)
-        return np.sum(self.chi_per_channel)
+        return float(np.sum(self.chi_per_channel))
