@@ -194,9 +194,12 @@ class UVFits:
             np.sum(np.abs((self.visibility * self.weight) / self.weight.sum()), axis=0)
         )
 
-    def image_to_visibilities(self, file: PathLike):
+    def image_to_visibilities(self, cube: Union[spectral_cube.SpectralCube, PathLike]):
         """Import cube from a FITS `file`, sample it with visibilities of this UVFITS"""
-        cube = spectral_cube.SpectralCube.read(file)
+        if isinstance(cube, spectral_cube.SpectralCube):
+            pass
+        else:
+            cube = spectral_cube.SpectralCube.read(file)
         pixel_area_units = u.Unit(cube.wcs.celestial.world_axis_units[0]) * u.Unit(
             cube.wcs.celestial.world_axis_units[1])
         pixel_area = astropy.wcs.utils.proj_plane_pixel_area(cube.wcs.celestial) * pixel_area_units
