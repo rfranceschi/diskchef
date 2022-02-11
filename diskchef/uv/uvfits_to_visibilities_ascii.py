@@ -249,7 +249,6 @@ class UVFits:
         Args:
             data: PathLike -- path to data cube readable by SpectralCube.read OR the spectral cube itself
         """
-        # print("Vis before: ", self.visibility)
         if not isinstance(data, spectral_cube.SpectralCube):
             data = spectral_cube.SpectralCube.read(data)
 
