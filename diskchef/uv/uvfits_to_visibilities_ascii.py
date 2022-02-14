@@ -442,7 +442,7 @@ class UVFits:
         data_to_write_array = np.array(uvfits.data)
 
         hdul_to_modify = astropy.io.fits.open(file_to_modify, lazy_load_hdus=False, memmap=False)
-        data_to_be_modified = hdul_to_modify["DATA"][:, 0, 0, 0, :, 0, :]
+        data_to_be_modified = hdul_to_modify[0].data["DATA"][:, 0, 0, 0, :, 0, :]
         if residual:
             data_to_be_modified[:, :, 0:2] -= data_to_write_array[:, :, 0:2]
         else:
@@ -464,7 +464,7 @@ class UVFits:
                     uv_map
                     clean
                     lut {lut}
-                    view clean
+                    view clean /nopause
                     hardcopy {name}.{device} /device {device} /overwrite
             """,
             script_filename: PathLike = "last.imager",
@@ -493,9 +493,11 @@ class UVFits:
             >>> UVFits.run_gildas(input_file="model.uvfits", name="model")  # doctest: +SKIP
         """
 
+        script_filename = Path(script_filename)
+        input_file = Path(input_file)
         with open(script_filename, "w") as fff:
             fff.write(textwrap.dedent(script_template.format(
-                input_file=input_file,
+                input_file=input_file.name,
                 name=name,
                 lut=lut,
                 device=device,
@@ -503,7 +505,8 @@ class UVFits:
             )))
 
         proc = subprocess.run(
-            f'cat {script_filename} | {imager_executable} -nw',
-            capture_output=True, encoding='utf8', shell=True
+            f'cat {script_filename.resolve()} | {imager_executable} -nw',
+            capture_output=True, encoding='utf8', shell=True,
+            cwd=input_file.parent
         )
         return proc
