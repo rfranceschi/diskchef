@@ -3,6 +3,7 @@ import math
 import pickle
 
 import os
+import textwrap
 from pathlib import Path
 from typing import Union, Literal, Sequence, List
 import logging
@@ -493,13 +494,13 @@ class UVFits:
         """
 
         with open(script_filename, "w") as fff:
-            fff.write(script_template.format(
+            fff.write(textwrap.dedent(script_template.format(
                 input_file=input_file,
                 name=name,
                 lut=lut,
                 device=device,
                 **kwargs
-            ))
+            )))
 
         proc = subprocess.run(
             f'cat {script_filename} | {imager_executable} -nw',
