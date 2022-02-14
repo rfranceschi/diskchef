@@ -1,17 +1,22 @@
 """Module with functions to convert GILDAS UVTable to GALARIO visibilities format"""
+import math
 import pickle
 
 import os
-from typing import Union, Literal, Sequence
+from pathlib import Path
+from typing import Union, Literal, Sequence, List
 import logging
+import subprocess
 
 import numpy as np
 from astropy import constants as c
 from astropy import units as u
 from astropy.table import Table, QTable
+import astropy.io.fits
 import astropy.wcs
 from matplotlib import pyplot as plt
 import matplotlib.axes
+import matplotlib.figure
 import spectral_cube
 
 try:
@@ -83,12 +88,18 @@ class UVFits:
      -81.27303053788901   70.64653734266903   0.1422663387734871 .. 0.15214664685856188  -0.008367051589066395 .. -0.017851764309400768 0.11814501360102375 .. 0.12543794548908482
     """
 
-    def __init__(self, path: PathLike, channel: Union[int, Sequence, slice, Literal['all']] = 'all', sum: bool = True):
+    def __init__(
+            self,
+            path: PathLike,
+            channel: Union[int, Sequence, slice, Literal['all']] = 'all',
+            sum: bool = False
+    ):
         self.logger = logging.getLogger(__name__ + '.' + self.__class__.__qualname__)
         self.logger.info("Creating an instance of %s", self.__class__.__qualname__)
         self.logger.debug("With parameters: %s", self.__dict__)
 
         self.path = os.path.abspath(path)
+        self.restfreq = None
         if self.path.lower().endswith((".uvfits", ".fits")):
             self._fits = Table.read(path, hdu=0, memmap=False)
             self.table = QTable()
@@ -118,6 +129,7 @@ class UVFits:
                     (self._fits.meta['CRVAL4'] +
                      (self.fetched_channels - self._fits.meta['CRPIX4'] + 1) * self._fits.meta['CDELT4']
                      ) * u.Hz)
+            self.restfreq = self._fits.meta.get("RESTFREQ", None)
         elif self.path.lower().endswith(".pkl"):
             self._fits = None
             with open(self.path, "rb") as pkl:
@@ -127,6 +139,9 @@ class UVFits:
                 self.weight = np.empty_like(self.u)
                 self.table = astropy.table.QTable()
                 self._update_table()
+            self.restfreq = self._fits.meta.get("RESTFREQ", None)
+
+    kl = u.def_unit('kλ', 1000 * u.dimensionless_unscaled)
 
     @property
     def data(self):
@@ -176,11 +191,103 @@ class UVFits:
     def wavelengths(self):
         return c.c / self.frequencies
 
-    def plot_uvgrid(self, axes: matplotlib.axes.Axes = None):
+    def plot_uvgrid(
+            self,
+            axes: matplotlib.axes.Axes = None,
+            kl: bool = False, restfreq: u.Hz = None,
+            symsize: float = 1,
+            **kwargs
+    ) -> matplotlib.axes.Axes:
+        """
+
+        Args:
+            axes: axes to draw the map on
+            kl: if True, plots in dimensionless [kλ], thousands of wavelength. If more than one frequency is present,
+            and restfreq is not set, the mean is taken
+            restfreq: u.spectral - equivalent unit, the rest frequency to use when kl is True
+            kwargs: to be passed to axes.scatter
+
+        Returns:
+            axes with the uv grid plotted
+        """
         if axes is None:
             _, axes = plt.subplots(1)
             axes.set_aspect('equal')
-        axes.scatter([*self.u, *(-self.u)], [*self.v, *(-self.v)], alpha=0.5, s=0.2)
+
+        xplot = u.Quantity([*self.u, *(-self.u)])
+        yplot = u.Quantity([*self.v, *(-self.v)])
+
+        if restfreq is None:
+            restfreq = np.median(self.frequencies)
+        restwl = restfreq.to(u.m, equivalencies=u.spectral())
+        if kl:
+            xplot = (xplot / restwl).to(self.kl)
+            yplot = (yplot / restwl).to(self.kl)
+
+        sizes = symsize * self.weight[:, 0] / (self.weight.max())
+        sizes = np.array([*sizes, *sizes])
+        axes.invert_xaxis()
+        axes.scatter(xplot, yplot, alpha=0.5, s=sizes, **kwargs)
+        return axes
+
+    def plot_uv_channel_map(
+            self,
+            nx: int = None, ny: int = None,
+            channels: Union[range, List[int], Literal[Ellipsis]] = Ellipsis,
+            subplot_kw: dict = None,
+            gridspec_kw: dict = (("hspace", 0), ("wspace", 0)),
+            fig_kw: dict = None,
+            symsize: float = 0.5,
+            **kwargs
+    ) -> matplotlib.figure.Figure:
+        gridspec_kw = dict(gridspec_kw)
+        data_to_plot = self.data[:, channels, :]
+        re = data_to_plot[:, :, 0]
+        im = data_to_plot[:, :, 1]
+
+        frequencies = self.frequencies[channels]
+        nchannels = re.shape[1]
+
+        if nx is None and ny is not None:
+            nx = math.ceil(nchannels / ny)
+        elif nx is not None and ny is None:
+            ny = math.ceil(nchannels / nx)
+        elif nx is not None and ny is not None:
+            if nx * ny > nchannels:
+                raise CHEFValueError(f"Inconsistent number of channels: nx * ny = {nx * ny} > nchannels = {nchannels}")
+        else:
+            ny = nx = math.ceil(math.sqrt(nchannels))
+
+        if fig_kw is None: fig_kw = {}
+        fig, axes = plt.subplots(
+            ny, nx, squeeze=False, subplot_kw=subplot_kw, gridspec_kw=gridspec_kw,
+            sharex="all", sharey="all",
+            **fig_kw
+        )
+        axes.flatten()[0].invert_xaxis()
+        for ax in axes.flatten(): ax.set_visible(False)
+        xplot = u.Quantity([*self.u, *(-self.u)])
+        yplot = u.Quantity([*self.v, *(-self.v)])
+
+        visibility = re + 1j * im
+        visibility = [*visibility, *visibility] * u.Jy
+        color = np.angle(visibility)
+        sizes = np.abs(visibility)
+        sizes /= sizes.max() * symsize
+
+        for vis, freq, s, col, ax in zip(visibility.T, frequencies, sizes.T, color.T, axes.flatten()):
+            ax.set_visible(True)
+            restwl = freq.to(u.m, equivalencies=u.spectral())
+            xxplot = (xplot / restwl).to(self.kl)
+            yyplot = (yplot / restwl).to(self.kl)
+            ax.scatter(xxplot, yyplot, s=s, c=col, cmap="twilight", **kwargs)
+            ax.get_xaxis().set_visible(False)
+            ax.get_yaxis().set_visible(False)
+
+        axes[ny - 1, 0].get_xaxis().set_visible(True)
+        axes[ny - 1, 0].get_yaxis().set_visible(True)
+
+        return fig
 
     def plot_total_power(self, rest_freq: u.Hz = None, axes: matplotlib.axes.Axes = None):
         if rest_freq is not None:
@@ -208,7 +315,7 @@ class UVFits:
 
         visibilities = []
         for i, frequency in enumerate(
-            cube.with_spectral_unit(u.Hz, velocity_convention="radio").spectral_axis
+                cube.with_spectral_unit(u.Hz, velocity_convention="radio").spectral_axis
         ):
             wl = (c.c / frequency).si
             u_wavelengths = (self.u / wl).to_value(u.dimensionless_unscaled)
@@ -260,7 +367,8 @@ class UVFits:
 
         self.logger.debug("Data spectral axis: %s", data.spectral_axis)
         self.logger.debug("UVTable spectral axis: %s", self.frequencies)
-        if (data.spectral_axis.shape != self.frequencies.shape) or (not np.all(np.equal(data.spectral_axis, self.frequencies))):
+        if (data.spectral_axis.shape != self.frequencies.shape) or (
+                not np.all(np.equal(data.spectral_axis, self.frequencies))):
             self.logger.info("Interpolate data to UVTable spectral grid")
             data = data.spectral_interpolate(spectral_grid=self.frequencies)
 
@@ -287,3 +395,110 @@ class UVFits:
             )
             self.chi_per_channel.append(chi_per_channel)
         return float(np.sum(self.chi_per_channel))
+
+    @classmethod
+    def write_visibilities_to_uvfits(
+            cls,
+            data_to_write: Union[PathLike, spectral_cube.SpectralCube],
+            file_to_modify: PathLike,
+            output_filename: PathLike = None,
+            uv_kwargs: dict = None,
+    ) -> PathLike:
+        """
+        Replace visibilities of `file_to_modify` to visibilities sampled from `data_to_write`,
+        save into `output_filename`.
+
+        Args:
+            data_to_write: PathLike or SpectralCube, data to replace the original table
+            file_to_modify: PathLike, uvfits file with visibilities and frequencies to use as a reference
+            output_filename: PathLike, optional: name of new uvfits file, `file_to_modify`.modified.uvfits by default
+            uv_kwargs: kwargs to be passed to UVFits initialization, ie `sum` or `channel`
+
+        Returns:
+            output file name
+
+        Usage:
+            >>> UVFits.write_visibilities_to_uvfits(  # doctest: +SKIP
+            ...     data_to_write="13CO J=2-1_image.fits",
+            ...     file_to_modify="13co.uvfits",
+            ...     output_filename="13co_model.uvfits",
+            ...     uv_kwargs={'sum': False}
+            ... )
+        """
+        if uv_kwargs is None:
+            uv_kwargs = {}
+        if output_filename is None:
+            output_filename = Path(f"{file_to_modify}.modified.uvfits")
+
+        if not isinstance(data_to_write, spectral_cube.SpectralCube):
+            data_to_write = spectral_cube.SpectralCube.read(data_to_write)
+
+        uvfits = cls(file_to_modify, **uv_kwargs)
+        uvfits.image_to_visibilities(
+            data_to_write.spectral_interpolate(uvfits.frequencies)
+        )
+        data_to_write_array = np.array(uvfits.data)
+
+        hdul_to_modify = astropy.io.fits.open(file_to_modify, lazy_load_hdus=False, memmap=False)
+        data_to_be_modified = hdul_to_modify["DATA"][:, 0, 0, 0, :, 0, :]
+        data_to_be_modified[:, :, 0:2] = data_to_write_array[:, :, 0:2]
+
+        hdul_to_modify.writeto(output_filename, overwrite=True)
+
+        return output_filename
+
+    @classmethod
+    def run_gildas(
+            cls,
+            input_file: PathLike,
+            name: str,
+            imager_executable: PathLike = "imager",
+            script_template: str = """
+                    fits {input_file} to {name}
+                    read uv {name}
+                    uv_map
+                    clean
+                    lut {lut}
+                    view clean
+                    hardcopy {name}.{device} /device {device} /overwrite
+            """,
+            script_filename: PathLike = "last.imager",
+            device: Union[Literal["pdf", "png", "eps", "ps"], str] = "pdf",
+            lut: str = "inferno",
+            **kwargs
+    ) -> subprocess.CompletedProcess:
+        """
+        Send script to GILDAS. The primary use is to send an imaging script to IMAGER
+
+        Args:
+            input_file: path to .uvfits file to be imaged, passed to `script_template.format
+            name: basename for the output files, passed to `script_template.format
+            imager_executable: path to imager executable, if not in system PATH
+            script_template: string containing script with parameters listed in {} for .format
+            script_filename: the filename for the created script
+            device: DEVICE keyword for `[GTVL\]HARDCOPY`, the output figure file format,
+                passed to `script_template.format
+            lut: argument for `[GTVL\]LUT` for colormap setting, `inferno` by default, passed to `script_template.format
+            **kwargs: other arguments passed to `script_template.format`
+
+        Returns:
+            subprocess.CompletedProcess instance with .stdout and .stderr attributes
+
+        Usage:
+            >>> UVFits.run_gildas(input_file="model.uvfits", name="model")  # doctest: +SKIP
+        """
+
+        with open(script_filename, "w") as fff:
+            fff.write(script_template.format(
+                input_file=input_file,
+                name=name,
+                lut=lut,
+                device=device,
+                **kwargs
+            ))
+
+        proc = subprocess.run(
+            f'cat {script_filename} | {imager_executable} -nw',
+            capture_output=True, encoding='utf8'
+        )
+        return proc
