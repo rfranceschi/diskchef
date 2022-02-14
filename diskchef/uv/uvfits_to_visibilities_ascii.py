@@ -403,6 +403,7 @@ class UVFits:
             file_to_modify: PathLike,
             output_filename: PathLike = None,
             uv_kwargs: dict = None,
+            residual: bool = False,
     ) -> PathLike:
         """
         Replace visibilities of `file_to_modify` to visibilities sampled from `data_to_write`,
@@ -413,7 +414,7 @@ class UVFits:
             file_to_modify: PathLike, uvfits file with visibilities and frequencies to use as a reference
             output_filename: PathLike, optional: name of new uvfits file, `file_to_modify`.modified.uvfits by default
             uv_kwargs: kwargs to be passed to UVFits initialization, ie `sum` or `channel`
-
+            residual: if True, write input residuals `data_to_be_modified - data_to_write` instead of `data_to_write`
         Returns:
             output file name
 
@@ -441,7 +442,10 @@ class UVFits:
 
         hdul_to_modify = astropy.io.fits.open(file_to_modify, lazy_load_hdus=False, memmap=False)
         data_to_be_modified = hdul_to_modify["DATA"][:, 0, 0, 0, :, 0, :]
-        data_to_be_modified[:, :, 0:2] = data_to_write_array[:, :, 0:2]
+        if residual:
+            data_to_be_modified[:, :, 0:2] -= data_to_write_array[:, :, 0:2]
+        else:
+            data_to_be_modified[:, :, 0:2] = data_to_write_array[:, :, 0:2]
 
         hdul_to_modify.writeto(output_filename, overwrite=True)
 
