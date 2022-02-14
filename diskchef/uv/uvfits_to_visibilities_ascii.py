@@ -306,7 +306,7 @@ class UVFits:
         if isinstance(cube, spectral_cube.SpectralCube):
             pass
         else:
-            cube = spectral_cube.SpectralCube.read(file)
+            cube = spectral_cube.SpectralCube.read(cube)
         pixel_area_units = u.Unit(cube.wcs.celestial.world_axis_units[0]) * u.Unit(
             cube.wcs.celestial.world_axis_units[1])
         pixel_area = astropy.wcs.utils.proj_plane_pixel_area(cube.wcs.celestial) * pixel_area_units
