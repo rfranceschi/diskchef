@@ -504,6 +504,6 @@ class UVFits:
 
         proc = subprocess.run(
             f'cat {script_filename} | {imager_executable} -nw',
-            capture_output=True, encoding='utf8'
+            capture_output=True, encoding='utf8', shell=True
         )
         return proc
