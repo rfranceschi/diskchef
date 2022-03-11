@@ -354,7 +354,7 @@ class UVFits:
         with open(filename, "wb") as uvpkl:
             pickle.dump((self.u, self.v), uvpkl)
 
-    def chi2_with(self, data=Union[PathLike, spectral_cube.SpectralCube], check=False) -> float:
+    def chi2_with(self, data=Union[PathLike, spectral_cube.SpectralCube], **kwargs) -> float:
         """Method to calculate chi-squared of a given UV set with a data cube
 
         Args:
@@ -391,8 +391,8 @@ class UVFits:
                 vis_obs_re=_re.astype('float64').to_value(u.Jy),
                 vis_obs_im=_im.astype('float64').to_value(u.Jy),
                 vis_obs_w=_weight.astype('float64').to_value(u.Jy ** -2),
-                check=check,
-                origin='lower'
+                origin='lower',
+                **kwargs
             )
             self.chi_per_channel.append(chi_per_channel)
         return float(np.sum(self.chi_per_channel))
