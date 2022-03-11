@@ -127,13 +127,14 @@ class WilliamsBest2014(ParametrizedPhysics):
             gas density, in u.g / u.cm ** 3
         """
         density = np.zeros_like(z.value) << u.g / u.cm ** 3
-        self.logger.debug("\n\n%s\n\n", self.table)
+        self.logger.debug("radius: \n%s", r)
+        self.logger.debug("height: \n%s", z)
+        self.logger.debug("set(r): \n%s", set(r))
         for _r in set(r):
             indices_this_radius = r == _r
-            self.logger.debug("vertical density shape %i, self vertical density shape %i",
-                              len(density[indices_this_radius]),
-                              len(self._vertical_density(_r)(z[indices_this_radius])))
+            self.logger.debug("vertical density: \n%s", self._vertical_density(_r)(z[indices_this_radius]))
             density[indices_this_radius] = self._vertical_density(_r)(z[indices_this_radius])
+        self.logger.debug("density: \n%s", density)
         return density
 
     @u.quantity_input
