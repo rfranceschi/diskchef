@@ -20,7 +20,7 @@ class LogNormMaxOrders(matplotlib.colors.LogNorm):
         self.vmin = max([self.vmin, self.vmax / self.maxdepth])
 
 class unsorted_interp2d(scipy.interpolate.interp2d):
-    """interp2d subclass that remembers original oxrder of data points"""
+    """interp2d subclass that remembers original order of data points"""
 
     def __call__(self, x, y, dx=0, dy=0, assume_sorted=None):
         unsorted_idxs = np.argsort(np.argsort(x))

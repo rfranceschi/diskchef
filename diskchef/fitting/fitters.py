@@ -1,7 +1,9 @@
 """Brut-force fitter for diskchef"""
+import inspect
 import pickle
 import logging
 import os
+from collections.abc import Iterable
 from dataclasses import dataclass, field
 from functools import partial
 from multiprocessing import Pool
@@ -89,6 +91,9 @@ class Fitter:
         self.logger.debug("With parameters: %s", self.__dict__)
         self._table = None
         self.sampler = None
+
+        self._check_lnprob()
+
         for parameter in self.parameters:
             if any(
                     fit_result is not None for fit_result in
@@ -99,6 +104,22 @@ class Fitter:
                 parameter.fitted = parameter.fitted_error = None
                 parameter.fitted_error_up = parameter.fitted_error_down = None
                 self.logger.info("Parameter %s is cleaned.", parameter)
+
+    def _check_lnprob(self):
+        if not callable(self.lnprob):
+            raise CHEFValueError("lnprob must be callable!")
+        defaults = [
+            param.default
+            for name, param
+            in inspect.signature(self.lnprob).parameters.items()
+            if name != 'self'
+        ]
+        if defaults[0] is not inspect.Parameter.empty:
+            self.logger.warning("lnprob first argument has a default value!")
+            if not isinstance(defaults[0], Iterable):
+                self.logger.error("First argument of lnprob should be an array of parameters! Continuing anyway.")
+        if inspect.Parameter.empty in defaults[1:]:
+            self.logger.error("lnprob should have only one non-default argument! Continuing anyway.")
 
     def _post_fit(self):
         fig = self.corner()
