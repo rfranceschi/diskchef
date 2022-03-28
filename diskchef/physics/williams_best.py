@@ -1,4 +1,3 @@
-import logging
 from dataclasses import dataclass
 from functools import cached_property
 
@@ -127,19 +126,9 @@ class WilliamsBest2014(ParametrizedPhysics):
             gas density, in u.g / u.cm ** 3
         """
         density = np.zeros_like(z.value) << u.g / u.cm ** 3
-        self.logger.debug("density shape: %s", density.shape)
-        self.logger.debug("radius shape: %s", r.shape)
-        self.logger.debug("height shape: %s", z.shape)
-        self.logger.debug("set(r): \n%s", len(set(r.value)))
         for _r in set(r):
             indices_this_radius = r == _r
-            with np.printoptions(threshold=np.inf):
-                self.logger.debug("indices_this_radius \n%s", indices_this_radius)
-            self.logger.debug("_r: \n%s", _r)
-            self.logger.debug("density this radius shape: %s", density[indices_this_radius])
-            self.logger.debug("vertical density shape: %s", self._vertical_density(_r)(z[indices_this_radius]).shape)
             density[indices_this_radius] = self._vertical_density(_r)(z[indices_this_radius])
-        # self.logger.debug("density: \n%s", density)
         return density
 
     @u.quantity_input
