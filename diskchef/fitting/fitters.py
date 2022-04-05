@@ -1,4 +1,4 @@
-"""Brut-force fitter for diskchef"""
+"""Fitter for diskchef"""
 import inspect
 import pickle
 import logging
@@ -30,6 +30,23 @@ from diskchef.engine.overplot_scatter import overplot_scatter, overplot_hexbin
 
 @dataclass
 class Parameter:
+    """
+    Class that handles parameters for diskchef Fitters
+
+    Args:
+        name: str - name of the parameter
+        min: float
+        max: float - prior minimal and maximal value of the parameter
+        truth: optional, float - expected value of the parameter
+        format_: str - python format-string for the parameter output
+        log: bool - whether the logarithm of the valus should be used for fitting instead
+
+    Fields:
+        fitted: float - fitted value
+        fitted_error: float - 1-sigma error of the fitted value
+        fitted_error_up: float - upper error of the fitted value
+        fitted_error_down: float - lower error of the fitted value
+    """
     name: str
     min: Union[u.Quantity, float] = None
     max: Union[u.Quantity, float] = None
@@ -44,7 +61,10 @@ class Parameter:
         self.fitted_error_down = None
 
     @property
-    def math_repr(self):
+    def math_repr(self) -> str:
+        """
+        Returns matplotlib/LaTeX-formatted representation of the parameter and its fitted value
+        """
         out = "$"
         if self.fitted is None:
             out += self.name
@@ -65,6 +85,9 @@ class Parameter:
         return f"${self.name}$"
 
     def __eq__(self, other):
+        """
+        Checks whether right parameter is within left parameter's error bar
+        """
         if self.fitted is None:
             return False
         elif self.fitted_error is None:
@@ -122,6 +145,9 @@ class Fitter:
             self.logger.error("lnprob should have only one non-default argument! Continuing anyway.")
 
     def _post_fit(self):
+        """
+        Private method to run after the fitting is complete
+        """
         fig = self.corner()
         fig.savefig("corner.pdf")
         self.save()
