@@ -27,7 +27,7 @@ setup(
         'scikit-learn == 1.0.1',
         'emcee',
         'corner',
-        'ultranest >= 3.3.3',
+        'ultranest == 3.3.3',
         'h5py',
         'mpi4py'
     ],
