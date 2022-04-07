@@ -1,7 +1,9 @@
-"""Brut-force fitter for diskchef"""
+"""Fitter for diskchef"""
+import inspect
 import pickle
 import logging
 import os
+from collections.abc import Iterable
 from dataclasses import dataclass, field
 from functools import partial
 from multiprocessing import Pool
@@ -28,6 +30,23 @@ from diskchef.engine.overplot_scatter import overplot_scatter, overplot_hexbin
 
 @dataclass
 class Parameter:
+    """
+    Class that handles parameters for diskchef Fitters
+
+    Args:
+        name: str - name of the parameter
+        min: float
+        max: float - prior minimal and maximal value of the parameter
+        truth: optional, float - expected value of the parameter
+        format_: str - python format-string for the parameter output
+        log: bool - whether the logarithm of the valus should be used for fitting instead
+
+    Fields:
+        fitted: float - fitted value
+        fitted_error: float - 1-sigma error of the fitted value
+        fitted_error_up: float - upper error of the fitted value
+        fitted_error_down: float - lower error of the fitted value
+    """
     name: str
     min: Union[u.Quantity, float] = None
     max: Union[u.Quantity, float] = None
@@ -42,7 +61,10 @@ class Parameter:
         self.fitted_error_down = None
 
     @property
-    def math_repr(self):
+    def math_repr(self) -> str:
+        """
+        Returns matplotlib/LaTeX-formatted representation of the parameter and its fitted value
+        """
         out = "$"
         if self.fitted is None:
             out += self.name
@@ -63,6 +85,9 @@ class Parameter:
         return f"${self.name}$"
 
     def __eq__(self, other):
+        """
+        Checks whether right parameter is within left parameter's error bar
+        """
         if self.fitted is None:
             return False
         elif self.fitted_error is None:
@@ -89,6 +114,9 @@ class Fitter:
         self.logger.debug("With parameters: %s", self.__dict__)
         self._table = None
         self.sampler = None
+
+        self._check_lnprob()
+
         for parameter in self.parameters:
             if any(
                     fit_result is not None for fit_result in
@@ -100,7 +128,26 @@ class Fitter:
                 parameter.fitted_error_up = parameter.fitted_error_down = None
                 self.logger.info("Parameter %s is cleaned.", parameter)
 
+    def _check_lnprob(self):
+        if not callable(self.lnprob):
+            raise CHEFValueError("lnprob must be callable!")
+        defaults = [
+            param.default
+            for name, param
+            in inspect.signature(self.lnprob).parameters.items()
+            if name != 'self'
+        ]
+        if defaults[0] is not inspect.Parameter.empty:
+            self.logger.warning("lnprob first argument has a default value!")
+            if not isinstance(defaults[0], Iterable):
+                self.logger.error("First argument of lnprob should be an array of parameters! Continuing anyway.")
+        if inspect.Parameter.empty in defaults[1:]:
+            self.logger.error("lnprob should have only one non-default argument! Continuing anyway.")
+
     def _post_fit(self):
+        """
+        Private method to run after the fitting is complete
+        """
         fig = self.corner()
         fig.savefig("corner.pdf")
         self.save()
@@ -404,9 +451,13 @@ class UltraNestFitter(Fitter):
                     parameter.fitted_error = results['stdev'][i]
 
                 if self.plot_corner:
-                    fig = self.corner()
-                    fig.savefig(self.log_dir / f"corner_{i:06d}.pdf")
-                    fig.savefig(self.log_dir / "corner.pdf")
+                    try:
+                        fig = self.corner()
+                        fig.savefig(self.log_dir / f"corner_{i:06d}.pdf")
+                        fig.savefig(self.log_dir / "corner.pdf")
+                    except ValueError as e:
+                        self.logger.error("Could not make corner plot for %d:", i)
+                        self.logger.error(e)
 
         if not self.sampler.use_mpi or self.sampler.mpi_rank == 0:
             self._post_fit()

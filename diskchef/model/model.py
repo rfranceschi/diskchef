@@ -2,93 +2,187 @@ import pickle
 
 from functools import cached_property
 import pathlib
-from typing import List, Type
+from typing import List, Type, Dict, Union
 from dataclasses import dataclass, field
+import warnings
 
 import numpy as np
 import astropy.wcs
 import astropy.table
 from astropy import units as u
 import spectral_cube
+from spectral_cube.utils import SpectralCubeWarning
 from matplotlib import pyplot as plt
 
 import diskchef.physics.base
+from diskchef.chemistry import NonzeroChemistryWB2014
 from diskchef.chemistry.scikit import SciKitChemistry
 from diskchef.dust_opacity import dust_files
 from diskchef import Line
 from diskchef.maps import RadMCTherm, RadMCRTSingleCall
+from diskchef.physics import YorkeBodenheimer2008
 from diskchef.physics.multidust import DustPopulation
-from diskchef.physics.williams_best import WilliamsBest2014
+from diskchef.physics.williams_best import WilliamsBest2014, WilliamsBest100au
 from diskchef.engine.other import PathLike
 
-import warnings
-from spectral_cube.utils import SpectralCubeWarning
+from diskchef.uv import UVFits
 
 warnings.filterwarnings(action='ignore', category=SpectralCubeWarning,
                         append=True)
 
 
 @dataclass
-class BaseModel:
-    """Base class for `diskchef` model
-
-    Needs to be subclussed to run properly
-
-    Fields:
-      name: `str` -- name of the model
-      folder: `PathLike` -- root directory for running the model. Same as `self.name` if not specified
-      run: bool -- whether to run automatically after initialization
-      physics_class: `PhysicsBase` subclass -- class for physics
-      params_physics: dict -- parameters for `self.physics_class`
-      chemistry_class: `ChemistryBase` subclass -- class for chemistry
-      params_chemistry: dict -- parameters for `self.chemistry_class`
-      line_rt_class: `RadMCRT` subclass -- class for line radiative transfer
-      params_line_rt: dict -- parameters for `self.line_rt_class`
-
-      Usage:
-      >>> model = BaseModel(
-      ...   name="DQ Tau", folder="DQ Tau model", run=True,
-      ...   physics_class=WilliamsBest2014, params_physics={"star_mass": 1*u.solMass},
-      ... )
-    """
-    name: str = "default"
-    folder: PathLike = None
-    run: bool = False
-    physics_class: Type[diskchef.physics.base.PhysicsBase] = None
-    params_physics: dict = field(default_factory=dict)
-    chemistry_class: Type[diskchef.chemistry.base.ChemistryBase] = None
-    params_chemistry: dict = field(default_factory=dict)
-    line_rt_class: Type[diskchef.maps.RadMCRT] = None
-    params_line_rt: dict = field(default_factory=dict)
+class ModelFit:
+    disk: str
+    directory: Union[pathlib.Path, str] = None
+    line_list: List[Line] = None
+    physics_class: Type[diskchef.physics.base.PhysicsModel] = WilliamsBest100au
+    physics_params: dict = field(default_factory=dict)
+    chemistry_class: Type[diskchef.chemistry.base.ChemistryBase] = NonzeroChemistryWB2014
+    chemical_params: dict = field(default_factory=dict)
+    mstar: u.Msun = 1 * u.Msun
+    rstar: u.au = None
+    tstar: u.K = None
+    inclination: u.deg = 0 * u.deg
+    position_angle: u.deg = 0 * u.deg
+    distance: u.pc = 100 * u.pc
+    nphot_therm: int = 1e7
+    npix: int = 100
+    channels: int = 31
+    dust_opacity_file: Union[pathlib.Path, str] = dust_files("diana")[0]
+    radial_bins_rt: int = None
+    vertical_bins_rt: int = None
+    line_window_width: u.km / u.s = 15 * u.km / u.s
+    radmc_lines_run_kwargs: dict = field(default_factory=dict)
+    mctherm_threads = 4
 
     def __post_init__(self):
-        if self.folder is None:
-            self.folder = pathlib.Path(self.name)
+        self.dust = None
+        self.disk_physical_model = None
+        self.disk_chemical_model = None
+        self.chi2_dict = None
+        self._check_radius_temperature()
+        self._update_defaults()
+        self._initialize_working_dir()
+        self.initialize_physics()
+        self.initialize_dust()
+        self.initialize_chemistry()
+
+    def run_chemistry(self):
+        self.disk_chemical_model.run_chemistry()
+        self.add_co_isotopologs()
+
+    def run_line_radiative_transfer(
+            self,
+            run_kwargs: dict = None,
+            **kwargs
+    ):
+        """Run line radiative transfer"""
+        folder_rt_gas = self.gas_directory
+        folder_rt_gas.mkdir(parents=True, exist_ok=True)
+
+        disk_map = RadMCRTSingleCall(
+            chemistry=self.disk_chemical_model, line_list=self.line_list,
+            radii_bins=self.radial_bins_rt, theta_bins=self.vertical_bins_rt,
+            folder=folder_rt_gas, **kwargs
+        )
+
+        disk_map.create_files(channels_per_line=self.channels, window_width=self.line_window_width)
+
+        disk_map.run(
+            inclination=self.inclination,
+            position_angle=self.position_angle,
+            distance=self.distance,
+            npix=self.npix,
+            **self.radmc_lines_run_kwargs
+        )
+
+    def add_co_isotopologs(self, _13c: float = 77, _18o: float = 560):
+        self.disk_chemical_model.table['13CO'] = self.disk_chemical_model.table['CO'] / _13c
+        self.disk_chemical_model.table['C18O'] = self.disk_chemical_model.table['CO'] / _18o
+        self.disk_chemical_model.table['13C18O'] = self.disk_chemical_model.table['CO'] / (_13c * _18o)
+        # remember to fix the next abundance
+        # self.disk_chemical_model.table['C17O'] = self.disk_chemical_model.table['CO'] / (
+        #         560 * 5)  # http://articles.adsabs.harvard.edu/pdf/1994ARA%26A..32..191W
+
+    def initialize_chemistry(self):
+        self.disk_chemical_model = self.chemistry_class(physics=self.disk_physical_model, **self.chemical_params)
+
+    def initialize_dust(self):
+        self.dust = DustPopulation(self.dust_opacity_file,
+                                   table=self.disk_physical_model.table,
+                                   name="Dust")
+        self.dust.write_to_table()
+
+    def initialize_physics(self):
+        self.disk_physical_model = self.physics_class(**self.physics_params)
+
+    def _update_defaults(self):
+        if self.radial_bins_rt is None:
+            self.radial_bins_rt = self.physics_params.get("radial_bins", 100)
+        if self.vertical_bins_rt is None:
+            self.radial_bins_rt = self.physics_params.get("vertical_bins", 100)
+
+    def _initialize_working_dir(self):
+        if self.directory is None:
+            self.directory = Path(self.disk)
         else:
-            self.folder = pathlib.Path(self.folder)
+            self.directory = pathlib.Path(self.directory)
+        self.directory.mkdir(exist_ok=True, parents=True)
+        with open(self.directory / "model_description.txt", "w") as fff:
+            fff.write(repr(self))
+            fff.write("\n")
+            fff.write(str(self.__dict__))
 
-        if self.run:
-            self.run_simulation()
+    def _check_radius_temperature(self):
+        if self.rstar is None and self.tstar is None:
+            yb = YorkeBodenheimer2008()
+            self.rstar = yb.radius(self.mstar)
+            self.tstar = yb.effective_temperature(self.mstar)
 
-    @cached_property
-    def physics(self):
-        """Run physical model"""
-        return self.physics_class(**self.params_physics)
+    def mctherm(self, threads=None):
+        """Run thermal radiative transfer for dust temperature calculation"""
+        if threads is None:
+            threads = self.mctherm_threads
+        folder_rt_dust = self.dust_directory
+        folder_rt_dust.mkdir(parents=True, exist_ok=True)
 
-    @cached_property
-    def dust(self):
-        """Add dust to physical model"""
-        dust = DustPopulation(dust_files("diana")[0], table=self.physics.table, name="DIANA dust")
-        dust.write_to_table()
-        return dust
+        self.mctherm_model = RadMCTherm(
+            chemistry=self.disk_chemical_model,
+            folder=folder_rt_dust,
+            nphot_therm=self.nphot_therm,
+            star_radius=self.rstar,
+            star_effective_temperature=self.tstar
+        )
 
-    @cached_property
-    def chemistry(self):
-        """Run chemistry"""
-        return self.chemistry_class(physics=self.physics, **self.params_chemistry)
+        self.mctherm_model.create_files()
+        self.mctherm_model.run(threads=threads)
+        self.mctherm_model.read_dust_temperature()
 
-    def run_simulation(self):
-        pass
+    @property
+    def gas_directory(self):
+        return self.directory / "radmc_gas"
+
+    @property
+    def dust_directory(self):
+        return self.directory / "radmc_dust"
+
+    def chi2(self, uvs: Dict[str, UVFits]):
+        """
+
+        Args:
+            uvs: dictionary in a form of {line.name: uvt for line is self.line_list}
+
+        Returns:
+            sum of chi2 between uvs and lines
+        """
+
+        self.chi2_dict = {
+            name: uv.chi2_with(self.gas_directory / f"{name}_image.fits")
+            for name, uv in uvs.items()
+            if name in [line.name for line in self.line_list]
+        }
+        return sum(self.chi2_dict.values())
 
 
 @dataclass
@@ -114,6 +208,7 @@ class Model:
     scikit_model: PathLike = None
 
     def __post_init__(self):
+        warnings.warn("Model class is deprecated in favor of ModelFit, which is being developed!", DeprecationWarning)
         if self.folder is None:
             self.folder = pathlib.Path(self.disk)
         else:
@@ -166,7 +261,7 @@ class Model:
     def image(
             self,
             radii_bins: int = 100, theta_bins: int = 100,
-            run_kwargs: dict = None, window_width: u.km/u.s = 15 * u.km/u.s,
+            run_kwargs: dict = None, window_width: u.km / u.s = 15 * u.km / u.s,
             **kwargs
     ):
         """Run line radiative transfer"""
@@ -202,7 +297,7 @@ class Model:
 
     def plot(self, save=None, **kwargs):
         """Plot physical and chemical structure"""
-        fig, ax = plt.subplots(2, 2, sharex=True, sharey=True, figsize=(11, 10))
+        fig, ax = plt.subplots(2, 2, sharex='all', sharey='all', figsize=(11, 10))
 
         self.disk_physical_model.plot_density(axes=ax[0, 0])
         tempplot = self.disk_physical_model.plot_temperatures(axes=ax[1, 0])

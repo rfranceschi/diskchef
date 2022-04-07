@@ -5,6 +5,7 @@ from typing import Literal
 import numpy as np
 from astropy import units as u
 
+from diskchef.engine.other import PathLike
 from diskchef.engine.ctable import CTable
 from diskchef.engine.exceptions import CHEFRuntimeError
 
@@ -118,7 +119,7 @@ class DustPopulation:
     3.000000e+00 1.000000e-15               3.333333e-01                2.652582e-02                      nan                         3.333333e-11             3.333333e-01              2.652582e-17                    nan                       3.333333e-16            3.333333e-01             2.652582e-32                   nan                      3.333333e-21
 
     """
-    opacity_file: str
+    opacity_file: PathLike
     table: CTable = None
     total_dust_density: u.g / u.cm ** 3 = None
     dust_temperature: u.K = None

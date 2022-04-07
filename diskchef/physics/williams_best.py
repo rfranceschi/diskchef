@@ -192,12 +192,12 @@ class WilliamsBest100au(WilliamsBest2014):
     A subclass of WilliamsBest2014 which uses temperatures at 100 au rather than at 1 au for a more robust fitting
 
     These defintions are equivalent:
-    >>> t_a, t_m, sl = 100, 1000, 0.55
+    >>> t_a, t_m, sl = 1000, 200, 0.55
     >>> original = WilliamsBest2014(vertical_bins=3, radial_bins=3,
-    ...     midplane_temperature_1au=t_a * u.K, atmosphere_temperature_1au=t_m * u.K,
+    ...     midplane_temperature_1au=t_m * u.K, atmosphere_temperature_1au=t_a * u.K,
     ...     temperature_slope=sl)
     >>> at_100_au = WilliamsBest100au(vertical_bins=3, radial_bins=3,
-    ...     midplane_temperature_100au=t_a * u.K / 100**sl, atmosphere_temperature_100au = t_m * u.K / 100**sl,
+    ...     midplane_temperature_100au=t_m * u.K / 100**sl, atmosphere_temperature_100au = t_a * u.K / 100**sl,
     ...     temperature_slope=sl)
     >>> original.table     # doctest: +NORMALIZE_WHITESPACE
     <CTable length=9>
@@ -205,20 +205,20 @@ class WilliamsBest100au(WilliamsBest2014):
          AU           AU                         g / cm3      g / cm3           K               K
       float64      float64        float64        float64      float64        float64         float64
     ------------ ------------ ---------------- ------------ ------------ --------------- ----------------
-    1.000000e-01 0.000000e+00     0.000000e+00 2.102690e-15 2.102690e-17    3.548134e+02     3.548134e+02
-    1.000000e-01 3.500000e-02     3.500000e-01 3.080145e-34 3.080145e-36    3.548134e+03     3.548134e+03
-    1.000000e-01 7.000000e-02     7.000000e-01 3.629823e-72 3.629823e-74    3.548134e+03     3.548134e+03
-    7.071068e+00 0.000000e+00     0.000000e+00 3.593866e-13 3.593866e-15    3.410227e+01     3.410227e+01
-    7.071068e+00 2.474874e+00     3.500000e-01 2.138733e-17 2.138733e-19    3.410227e+02     3.410227e+02
-    7.071068e+00 4.949747e+00     7.000000e-01 5.660244e-23 5.660244e-25    3.410227e+02     3.410227e+02
-    5.000000e+02 0.000000e+00     0.000000e+00 4.346110e-20 4.346110e-22    3.277680e+00     3.277680e+00
-    5.000000e+02 1.750000e+02     3.500000e-01 4.525949e-22 4.525949e-24    3.277680e+01     3.277680e+01
-    5.000000e+02 3.500000e+02     7.000000e-01 6.835933e-23 6.835933e-25    3.277680e+01     3.277680e+01
+    1.000000e-01 0.000000e+00     0.000000e+00 1.153290e-15 1.153290e-17    7.096268e+02     7.096268e+02
+    1.000000e-01 3.500000e-02     3.500000e-01 5.024587e-34 5.024587e-36    3.548134e+03     3.548134e+03
+    1.000000e-01 7.000000e-02     7.000000e-01 5.921268e-72 5.921268e-74    3.548134e+03     3.548134e+03
+    7.071068e+00 0.000000e+00     0.000000e+00 2.285168e-13 2.285168e-15    6.820453e+01     6.820453e+01
+    7.071068e+00 2.474874e+00     3.500000e-01 2.716386e-17 2.716386e-19    3.410227e+02     3.410227e+02
+    7.071068e+00 4.949747e+00     7.000000e-01 7.189026e-23 7.189026e-25    3.410227e+02     3.410227e+02
+    5.000000e+02 0.000000e+00     0.000000e+00 2.871710e-20 2.871710e-22    6.555359e+00     6.555359e+00
+    5.000000e+02 1.750000e+02     3.500000e-01 6.929036e-22 6.929036e-24    2.625083e+01     2.625083e+01
+    5.000000e+02 3.500000e+02     7.000000e-01 8.170464e-23 8.170464e-25    3.277680e+01     3.277680e+01
     >>> str(at_100_au.table) == str(original.table)
     True
     """
-    midplane_temperature_100au: u.K = 15.89 * u.K
-    atmosphere_temperature_100au: u.K = 281.8 * u.K
+    midplane_temperature_100au: u.K = 15.8866 * u.K
+    atmosphere_temperature_100au: u.K = 79.4328 * u.K
     midplane_temperature_1au: u.K = None
     atmosphere_temperature_1au: u.K = None
 

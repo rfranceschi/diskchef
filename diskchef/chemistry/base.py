@@ -53,6 +53,8 @@ class ChemistryBase:
             cmap: Union[matplotlib.colors.Colormap, str] = 'YlGnBu',
             **kwargs
     ) -> Plot2D:
+        if species2 is None:
+            species2 = species1
         if table is None:
             table = self.table
         return Plot2D(table, axes=axes, data1=species1, data2=species2, cmap=cmap, **kwargs)
