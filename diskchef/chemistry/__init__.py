@@ -10,6 +10,8 @@ Important:
 `diskchef.chemistry.NonzeroChemistryWB2014` -- same as `ChemistryWB2014` with more realistic non-zero CO abundances outside
 of the molecular layer set by default
 
+`diskchef.chemistry.SciKitChemistry` -- realization of chemistry based on Nearest-Neighbors fitting of ANDES2 models
+
 `diskchef.chemistry.Abundances` -- dict-like class to store the abundances and read them from files
 """
 from diskchef.chemistry.abundances import Abundances

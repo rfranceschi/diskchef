@@ -28,6 +28,7 @@ class PhysicsBase:
     star_mass: u.solMass = 1 * u.solMass
     xray_plasma_temperature: u.K = 1e7 * u.K
     xray_luminosity: u.erg / u.s = 1e31 * u.erg / u.s
+    cr_padovani_use_l: bool = False
 
     def __post_init__(self):
         self.logger = logging.getLogger(__name__ + '.' + self.__class__.__qualname__)
@@ -215,10 +216,13 @@ class PhysicsBase:
         midplane_dict = dict(zip(midplane_r, midplane_coldens))
         coldens = u.Quantity([midplane_dict[r] for r in self.table.r]).to_value(u.cm ** -2)
 
+        if self.cr_padovani_use_l:
+            padovani = diskchef.physics.ionization.padovani18l
+        else:
+            padovani = diskchef.physics.ionization.padovani18h
         self.table["CR ionization rate"] = 0.5 * (
-                diskchef.physics.ionization.padovani18l(np.log10(density_upwards)) +
-                diskchef.physics.ionization.padovani18l(
-                    np.log10(2 * coldens - density_upwards))
+                padovani(np.log10(density_upwards)) +
+                padovani(np.log10(2 * coldens - density_upwards))
         ) / u.s
 
 

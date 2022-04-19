@@ -71,3 +71,29 @@ def padovani18l(logdens):
             - logdens ** 8 * 6.188760100997e-5
             + logdens ** 9 * 3.122820990797e-8
     )
+
+def padovani18h(logdens):
+    """Return galactic cosmic ray ionization rate as of Padovani+18 App. F model H
+
+    https://www.aanda.org/articles/aa/pdf/2018/06/aa32202-17.pdf
+
+    Args:
+        logdens: log10 of number density in g/cm**2 from the source
+
+    Return:
+        ionization rate, in 1/s
+    """
+    logdens = np.where(logdens < 19, 19, logdens)
+    logdens = np.where(logdens > 27, 27, logdens)
+    return 10 ** (
+            1.001098610761e7 +
+            - logdens * 4.231294690194e6
+            + logdens ** 2 * 7.921914432011e5
+            - logdens ** 3 * 8.623677095423e4
+            + logdens ** 4 * 6.015889127529e3
+            - logdens ** 5 * 2.789238383353e2
+            + logdens ** 6 * 8.595814402406e0
+            - logdens ** 7 * 1.698029737474e-1
+            + logdens ** 8 * 1.951179287567e-3
+            - logdens ** 9 * 9.937499546711e-6
+    )
