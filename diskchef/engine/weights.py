@@ -19,6 +19,9 @@ def mol_weight(mol: str) -> u.u:
     Usage:
         >>> mol_weight('H2CO') #doctest: +ELLIPSIS
         <Quantity 30... u>
+
+    Raises:
+        ValueError - if given name of the molecule is not ANDES-standard
     """
     elements = {
         'H': 1.00790 * u.u,
@@ -50,5 +53,5 @@ def mol_weight(mol: str) -> u.u:
     if check_full == mol:
         return mass
     else:
-        print('Unsupported name of the molecule')
-        return 0.0 * u.u
+        raise ValueError('Unsupported name of the molecule %s, resolved: %s', mol, check_full)
+
