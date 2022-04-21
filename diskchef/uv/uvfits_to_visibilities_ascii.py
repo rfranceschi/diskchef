@@ -189,6 +189,10 @@ class UVFits:
             self.table['Weight'] = self.weight
 
     @property
+    def rest_freq(self) -> u.Hz:
+        return self._fits.meta.get("RESTFREQ", None) * u.Hz
+
+    @property
     def wavelengths(self):
         return c.c / self.frequencies
 
@@ -290,17 +294,37 @@ class UVFits:
 
         return fig
 
-    def plot_total_power(self, rest_freq: u.Hz = None, axes: matplotlib.axes.Axes = None):
+    def plot_total_power(
+            self,
+            rest_freq: u.Hz = None,
+            axes: matplotlib.axes.Axes = None,
+            axes_unit: Union[u.Unit, Literal["channel"]] = None,
+    ) -> matplotlib.axes.Axes:
+        """Plot the sum of visibilities collected by the interferometer.
+
+        This is not actually the total power, but gives the idea for the bright lines
+
+        Args:
+            rest_freq: u.Hz - the rest frequency of the line to convert axes to km/s
+            axes: matplotlib.axes.Axes - the axes to plot on
+            axes_unit: u.Unit - the unit to convert the axes to, defaults to the original axes unit (likely Hz)
+        """
         if rest_freq is not None:
             frequencies = self.frequencies.to(u.km / u.s, equivalencies=u.doppler_radio(rest_freq))
         else:
             frequencies = self.frequencies
+        if axes_unit is not None:
+            if axes_unit == "channel":
+                frequencies = np.arange(len(frequencies))
+            else:
+                frequencies = frequencies.to(axes_unit)
         if axes is None:
             _, axes = plt.subplots(1)
         axes.plot(
             frequencies,
             np.sum(np.abs((self.visibility * self.weight) / self.weight.sum()), axis=0)
         )
+        return axes
 
     def image_to_visibilities(self, cube: Union[spectral_cube.SpectralCube, PathLike]):
         """Import cube from a FITS `file`, sample it with visibilities of this UVFITS"""
@@ -453,20 +477,54 @@ class UVFits:
         return output_filename
 
     @classmethod
-    def run_gildas(
+    def run_gildas_script(
+            cls,
+            script: str = "SAY HELLO WORLD",
+            gildas_executable: PathLike = "imager",
+            script_filename: PathLike = "last.imager",
+            folder=None,
+    ) -> subprocess.CompletedProcess:
+        """
+        Send script to GILDAS.
+
+        Args:
+            script: GILDAS script to run
+            gildas_executable: path to GILDAS executable (imager, astro, etc.)
+            script_filename: filename for script as it will be saved as a file
+            folder: working directory for script
+
+        Returns:
+            subprocess.CompletedProcess instance with .stdout and .stderr attributes
+        """
+        if folder is None:
+            folder = Path.cwd()
+
+        script_filename = Path(script_filename)
+        with open(script_filename, "w") as fff:
+            fff.write(textwrap.dedent(script))
+
+        proc = subprocess.run(
+            f'cat {script_filename.resolve()} | {gildas_executable} -nw',
+            capture_output=True, encoding='utf8', shell=True,
+            cwd=folder
+        )
+        return proc
+
+    @classmethod
+    def run_imaging(
             cls,
             input_file: PathLike,
             name: str,
             imager_executable: PathLike = "imager",
             script_template: str = """
-                    fits {input_file} to {name}
-                    read uv {name}
-                    uv_map
-                    clean
-                    lut {lut}
-                    view clean /nopause
-                    hardcopy {name}.{device} /device {device} /overwrite
-            """,
+                        fits {input_file} to {name}
+                        read uv {name}
+                        uv_map
+                        clean
+                        lut {lut}
+                        view clean /nopause
+                        hardcopy {name}.{device} /device {device} /overwrite
+                """,
             script_filename: PathLike = "last.imager",
             device: Union[Literal["pdf", "png", "eps", "ps"], str] = "pdf",
             lut: str = "inferno",
@@ -490,23 +548,29 @@ class UVFits:
             subprocess.CompletedProcess instance with .stdout and .stderr attributes
 
         Usage:
-            >>> UVFits.run_gildas(input_file="model.uvfits", name="model")  # doctest: +SKIP
+            >>> UVFits.run_imaging(input_file="model.uvfits", name="model")  # doctest: +SKIP
         """
 
         script_filename = Path(script_filename)
         input_file = Path(input_file)
-        with open(script_filename, "w") as fff:
-            fff.write(textwrap.dedent(script_template.format(
+
+        proc = cls.run_gildas_script(
+            script=script_template.format(
                 input_file=input_file.name,
                 name=name,
                 lut=lut,
                 device=device,
                 **kwargs
-            )))
-
-        proc = subprocess.run(
-            f'cat {script_filename.resolve()} | {imager_executable} -nw',
-            capture_output=True, encoding='utf8', shell=True,
-            cwd=input_file.parent
+            ),
+            gildas_executable=imager_executable,
+            script_filename=script_filename,
+            folder=input_file.parent
         )
         return proc
+
+
+    @classmethod
+    def run_gildas(cls, *args, **kwargs):
+        """Deprecated, renamed to run_imaging. Alsom see run_gildas_script to run arbitrary GILDAS scripts."""
+        warnings.warn("run_gildas is deprecated, use run_imaging instead", DeprecationWarning)
+        return cls.run_imaging(*args, **kwargs)
