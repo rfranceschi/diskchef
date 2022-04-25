@@ -517,13 +517,13 @@ class UVFits:
             name: str,
             imager_executable: PathLike = "imager",
             script_template: str = """
-                        fits {input_file} to {name}
-                        read uv {name}
-                        uv_map
-                        clean
-                        lut {lut}
-                        view clean /nopause
-                        hardcopy {name}.{device} /device {device} /overwrite
+                        FITS {input_file} TO {name}
+                        READ UV {name}
+                        UV_MAP
+                        CLEAN
+                        LUT {lut}
+                        VIEW CLEAN /nopause
+                        HARDCOPY {name}.{device} /DEVICE {device} /OVERWRITE
                 """,
             script_filename: PathLike = "last.imager",
             device: Union[Literal["pdf", "png", "eps", "ps"], str] = "pdf",

@@ -22,8 +22,8 @@ class WilliamsBest2014(ParametrizedPhysics):
     >>> physics = WilliamsBest2014()
     >>> physics  # doctest: +NORMALIZE_WHITESPACE
     WilliamsBest2014(star_mass=<Quantity 1. solMass>, xray_plasma_temperature=<Quantity 10000000. K>,
-                     xray_luminosity=<Quantity 1.e+31 erg / s>, r_min=<Quantity 0.1 AU>, r_max=<Quantity 500. AU>,
-                     zr_max=0.7, radial_bins=100, vertical_bins=100, dust_to_gas=0.01,
+                     xray_luminosity=<Quantity 1.e+31 erg / s>, cr_padovani_use_l=False, r_min=<Quantity 0.1 AU>,
+                     r_max=<Quantity 500. AU>, zr_max=0.7, radial_bins=100, vertical_bins=100, dust_to_gas=0.01,
                      gas_mass=<Quantity 0.001 solMass>, tapering_radius=<Quantity 100. AU>,
                      tapering_gamma=0.75, midplane_temperature_1au=<Quantity 200. K>,
                       atmosphere_temperature_1au=<Quantity 1000. K>, temperature_slope=0.55,
@@ -31,7 +31,7 @@ class WilliamsBest2014(ParametrizedPhysics):
     >>> # Defaults can be overridden
     >>> WilliamsBest2014(star_mass=2 * u.solMass, r_max=200 * u.au)  # doctest: +NORMALIZE_WHITESPACE
     WilliamsBest2014(star_mass=<Quantity 2. solMass>, xray_plasma_temperature=<Quantity 10000000. K>,
-                     xray_luminosity=<Quantity 1.e+31 erg / s>, r_min=<Quantity 0.1 AU>,
+                     xray_luminosity=<Quantity 1.e+31 erg / s>, cr_padovani_use_l=False, r_min=<Quantity 0.1 AU>,
                      r_max=<Quantity 200. AU>, zr_max=0.7, radial_bins=100, vertical_bins=100, dust_to_gas=0.01,
                      gas_mass=<Quantity 0.001 solMass>, tapering_radius=<Quantity 100. AU>, tapering_gamma=0.75,
                      midplane_temperature_1au=<Quantity 200. K>, atmosphere_temperature_1au=<Quantity 1000. K>,
