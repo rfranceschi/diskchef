@@ -8,8 +8,10 @@ import shutil
 import os
 from dataclasses import dataclass
 
-import astropy.coordinates
 import numpy as np
+
+from matplotlib.figure import Figure
+import astropy.coordinates
 from astropy import units as u
 from astropy import constants as c
 from astropy.wcs import WCS
@@ -19,7 +21,7 @@ import radmc3dPy
 
 import diskchef
 from diskchef.engine.other import PathLike
-from diskchef.lamda.line import Line
+from diskchef.lamda.line import Line, DummyLine
 from diskchef.maps.radmcrt import RadMCBase, RadMCOutput
 
 
@@ -32,7 +34,7 @@ class RadMCRTImage(RadMCBase):
 
     Runs a generation of a continuum image, can be subclassed for line cube
     """
-    velocity: u.km/u.s = 0 * u.km/u.s
+    velocity: u.km / u.s = 0 * u.km / u.s
 
     def __post_init__(self):
         super().__post_init__()
@@ -137,7 +139,8 @@ class RadMCRTImage(RadMCBase):
             'CRVAL2': midy_val.value + coordinate.dec.to_value(u.deg), 'NAXIS2': y_len,
             'CTYPE1': 'FREQ    ', 'CUNIT1': 'Hz',
             'CDELT1': mean_channel_width.value if np.isfinite(mean_channel_width.value) else 1,
-            'CRPIX1': midfreq_i + 1, 'CRVAL1': (midfreq_hz * (1 - self.velocity / c.c)).to_value(u.Hz), 'NAXIS1': freq_len,
+            'CRPIX1': midfreq_i + 1, 'CRVAL1': (midfreq_hz * (1 - self.velocity / c.c)).to_value(u.Hz),
+            'NAXIS1': freq_len,
         }
 
         header = WCS(wcs_dict).to_header()
@@ -404,6 +407,17 @@ class RadMCRTSingleCall(RadMCRT):
             distance: u.pc = 140 * u.pc, velocity_offset: u.km / u.s = 0 * u.km / u.s,
             threads: int = 1, npix: int = 100
     ) -> None:
+        """
+        Run radmc3d to create the line emission cubes
+
+        Args:
+            inclination:
+            position_angle:
+            distance:
+            velocity_offset:
+            threads:
+            npix:
+        """
         self.logger.info("Running radmc3d")
         start = time.time()
         command = (f"{self.executable} {self.mode} "
@@ -426,8 +440,43 @@ class RadMCRTSingleCall(RadMCRT):
         names = [os.path.join(self.folder, f"{line.name}_image.out") for line in self.ordered_line_list]
         self.split(names=names)
         for line, name in zip(self.ordered_line_list, names):
-            self.outputs[line] = RadMCOutput(line, file_radmc=name)
+            self.outputs[line] = RadMCOutput(line, file_radmc=name, distance=distance)
             self.outputs[line].file_fits = self.radmc_to_fits(name, line, distance)
+
+    def channel_maps(
+            self,
+            filename: PathLike = None,
+            extension: typing.Union[None, str] = 'png',
+            distance: u.pc = None,
+            **kwargs
+    ) -> typing.List[Figure]:
+        """
+        Create channel maps for each line or just a given fits file
+
+        This method is in unstable state and will be modified and fixed in future versions
+
+        Args:
+            filename: input fits file to create channel maps from
+            extension: extension for the output figure, e.g. png, pdf, etc. Does not create any file if None
+            distance (u.pc): distance to the source. If None, the distance will be searched with Simbad
+
+        Returns:
+            list of matplotlib figures containing the channel maps
+        """
+        if filename is None:
+            outputs = self.outputs
+        else:
+            line = DummyLine(name=filename, molecule=filename)
+            outputs: typing.Dict[DummyLine, RadMCOutput] = {
+                line: RadMCOutput(line=line, file_fits=filename, distance=distance)
+            }
+        figures = []
+        for output in outputs.values():
+            fig = output.plot_channel_map(**kwargs)
+            if extension is not None:
+                fig.savefig(f"{output.line.name}.{extension}")
+            figures.append(fig)
+        return figures
 
     def split(
             self, filename=None,

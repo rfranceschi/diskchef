@@ -522,7 +522,7 @@ class UVFits:
                         UV_MAP
                         CLEAN
                         LUT {lut}
-                        VIEW CLEAN /nopause
+                        VIEW CLEAN /NOPAUSE
                         HARDCOPY {name}.{device} /DEVICE {device} /OVERWRITE
                 """,
             script_filename: PathLike = "last.imager",

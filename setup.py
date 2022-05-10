@@ -29,7 +29,8 @@ setup(
         'corner',
         'ultranest == 3.3.3',
         'h5py',
-        'mpi4py'
+        'mpi4py',
+        'regions'
     ],
     version_config=True,
     setup_requires=['setuptools-git-versioning', 'cython'],

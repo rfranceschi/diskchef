@@ -50,6 +50,7 @@ class Line:
         self.logger = logging.getLogger(__name__ + '.' + self.__class__.__qualname__ + f'({self.name})')
         self.logger.info("Creating an instance of %s", self.__class__.__qualname__)
         self.logger.debug("With parameters: %s", self.__dict__)
+        self._defined_name = self.name
         self.parse_lamda()
 
     def parse_lamda(self):
@@ -96,4 +97,21 @@ class Line:
         return self.transitions.loc[self.transition]["Frequency"]
 
     def __hash__(self):
-        return hash(self.name)
+        return hash(self._defined_name)
+
+
+@dataclass
+class DummyLine(Line):
+    """Line-like object which does not parse lamda database files."""
+    transition: int = None
+    molecule: str = None
+
+    def parse_lamda(self):
+        pass
+
+    @property
+    def frequency(self):
+        return None
+
+    def __hash__(self):
+        return hash(self._defined_name)

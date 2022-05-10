@@ -59,7 +59,7 @@ radmc = RadMCRTSingleCall(
     chemistry=chem, line_list=[
         # Line(name='CO J=2-1', transition=1, molecule='CO'),
         Line(name='CO J=3-2', transition=3, molecule='CO'),
-        # Line(name='13CO J=3-2', transition=2, molecule='13CO'),
+        Line(name='13CO J=3-2', transition=2, molecule='13CO'),
         # Line(name='C18O J=3-2', transition=2, molecule='C18O'),
     ],
     radii_bins=100, theta_bins=100,
@@ -67,8 +67,9 @@ radmc = RadMCRTSingleCall(
     scattering_mode_max=0,
     coordinate="DQ Tau"  # That is not going to represent a DQ Tau model, just a demo how coordinate can be supplied
 )
-radmc.create_files(channels_per_line=40, window_width=5 * u.km / u.s)
+radmc.create_files(channels_per_line=31, window_width=5 * u.km / u.s)
 radmc.run(
     inclination=35.18 * u.deg, position_angle=79.19 * u.deg,
     velocity_offset=6 * u.km / u.s, threads=8, distance=128 * u.pc,
 )
+radmc.channel_maps()
