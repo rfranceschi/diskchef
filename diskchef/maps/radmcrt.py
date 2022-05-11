@@ -35,8 +35,8 @@ from diskchef.maps.base import MapBase
 
 class Cloud(NamedTuple):
     """Tuple to store the foreground and background to mark on channel maps. Used in RadMCOutput"""
-    velocity_min: u.Quantity[u.km / u.s]
-    velocity_max: u.Quantity[u.km / u.s]
+    velocity_min: u.Quantity
+    velocity_max: u.Quantity
 
 
 @dataclass
