@@ -10,9 +10,9 @@ cache:
 
 before_script:
   - python -V               # Print out python version for debugging
-  - apt update && apt install -y gfortran mpi-default-dev
+  - apt update && apt install -y gfortran
   - pip install cython
-  - conda install -y -c conda-forge galario
+  - conda install -y -c conda-forge galario openmpi-mpicc
   - pip install .
 
 test:
