@@ -474,7 +474,7 @@ class RadMCRTSingleCall(RadMCRT):
         for output in outputs.values():
             fig = output.plot_channel_map(**kwargs)
             if extension is not None:
-                fig.savefig(f"{output.line.name}.{extension}")
+                fig.savefig(os.path.join(self.folder, f"{output.line.name}.{extension}"))
             figures.append(fig)
         return figures
 

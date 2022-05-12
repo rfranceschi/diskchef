@@ -168,6 +168,17 @@ class PhysicsBase:
                 integrals[i] = integral
         return u.Quantity(integrals)
 
+    def ionization(self, xray: str = "xray_bruderer", cosmic_ray: str = "cosmic_ray_padovani18"):
+        """Calculate ionization by running x-ray and cosmic ray methods"""
+
+        self.logger.debug("Calculating 'X ray ionization rate' according to %s", xray)
+        getattr(self, xray)()
+
+        self.logger.debug("Calculating 'CR ionization rate' according to %s", cosmic_ray)
+        getattr(self, cosmic_ray)()
+
+        self.table["Ionization rate"] = self.table["CR ionization rate"] + self.table["X ray ionization rate"]
+
     def xray_bruderer(self):
         """Calculate X-ray ionization rates using Bruderer+09 Table 3
 
