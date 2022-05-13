@@ -528,7 +528,7 @@ class UVFits:
                         ! VIEW CLEAN /NOPAUSE
                         LET SIZE 10
                         LET DO_CONTOUR NO
-                        SHOW
+                        SHOW CLEAN
                         HARDCOPY {name}.{device} /DEVICE {device} /OVERWRITE
                 """,
             script_filename: PathLike = "last.imager",
