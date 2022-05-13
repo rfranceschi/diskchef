@@ -378,12 +378,15 @@ class UVFits:
         with open(filename, "wb") as uvpkl:
             pickle.dump((self.u, self.v), uvpkl)
 
-    def chi2_with(self, data=Union[PathLike, spectral_cube.SpectralCube], **kwargs) -> float:
+    def chi2_with(self, data=Union[PathLike, spectral_cube.SpectralCube], threads: int = None, **kwargs) -> float:
         """Method to calculate chi-squared of a given UV set with a data cube
 
         Args:
             data: PathLike -- path to data cube readable by SpectralCube.read OR the spectral cube itself
+            threads: int -- number of threads for galario. Sets globally until called again with non-default value.
         """
+        if threads is not None:
+            g_double.threads(threads)
         if not isinstance(data, spectral_cube.SpectralCube):
             data = spectral_cube.SpectralCube.read(data)
 
@@ -522,7 +525,10 @@ class UVFits:
                         UV_MAP
                         CLEAN
                         LUT {lut}
-                        VIEW CLEAN /NOPAUSE
+                        ! VIEW CLEAN /NOPAUSE
+                        LET SIZE 10
+                        LET DO_CONTOUR NO
+                        SHOW
                         HARDCOPY {name}.{device} /DEVICE {device} /OVERWRITE
                 """,
             script_filename: PathLike = "last.imager",
