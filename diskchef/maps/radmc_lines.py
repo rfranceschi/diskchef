@@ -230,7 +230,7 @@ class RadMCRT(RadMCRTImage):
         if out_file is None:
             out_file = os.path.join(self.folder, f'molecule_{species}.inp')
 
-        shutil.copy(lamda_file, out_file)
+        shutil.copyfile(lamda_file, out_file)
 
     def lines(self, out_file: PathLike = None) -> None:
         self.molecules_list = sorted(list(set([line.molecule for line in self.line_list])))
@@ -331,7 +331,7 @@ class RadMCRT(RadMCRTImage):
             fitsfile = output.file_fits
             transition = output.line.transition
 
-            shutil.copy(fitsfile, os.path.join(folder, f"m-Line-00-{molecule}_{transition}+D.fits"))
+            shutil.copyfile(fitsfile, os.path.join(folder, f"m-Line-00-{molecule}_{transition}+D.fits"))
 
 
 @dataclass
