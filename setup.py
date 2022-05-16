@@ -17,7 +17,7 @@ setup(
     install_requires=[
         'numpy >= 1.18.0',
         'matplotlib >= 3.3.0',
-        'astropy >= 4.1.1',
+        'astropy >= 4.1.1, < 5.0.0',
         'scipy >= 1.5',
         'tqdm',
         'chemical_names @ git+https://gitlab.com/SmirnGreg/chemical_names.git',
