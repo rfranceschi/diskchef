@@ -445,11 +445,11 @@ class UltraNestFitter(Fitter):
                 self._table = tbl
 
                 results = self.sampler.results['posterior']
-                for i, parameter in enumerate(self.parameters):
-                    parameter.fitted = results['mean'][i]
-                    parameter.fitted_error_up = results['errup'][i] - results['mean'][i]
-                    parameter.fitted_error_down = results['mean'][i] - results['errlo'][i]
-                    parameter.fitted_error = results['stdev'][i]
+                for iparam, parameter in enumerate(self.parameters):
+                    parameter.fitted = results['mean'][iparam]
+                    parameter.fitted_error_up = results['errup'][iparam] - results['mean'][iparam]
+                    parameter.fitted_error_down = results['mean'][iparam] - results['errlo'][iparam]
+                    parameter.fitted_error = results['stdev'][iparam]
 
                 try:
                     self.sampler.plot()
