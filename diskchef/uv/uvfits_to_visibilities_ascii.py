@@ -143,9 +143,9 @@ class UVFits:
             self.restfreq = self._fits.meta.get("RESTFREQ", None)
         else:
             raise CHEFValueError(
-                "Unknown file format: "
+                "Unknown file format (%s): "
                 "expecting '.fits' / '.uvfits' for casa-style UVFITS file "
-                "or '.pkl' for previously pickled UVFits instance"
+                "or '.pkl' for previously pickled UVFits instance" % path
             )
 
     kl = u.def_unit('kλ', 1000 * u.dimensionless_unscaled)
