@@ -141,6 +141,12 @@ class UVFits:
                 self.table = astropy.table.QTable()
                 self._update_table()
             self.restfreq = self._fits.meta.get("RESTFREQ", None)
+        else:
+            raise CHEFValueError(
+                "Unknown file format: "
+                "expecting '.fits' / '.uvfits' for casa-style UVFITS file "
+                "or '.pkl' for previously pickled UVFits instance"
+            )
 
     kl = u.def_unit('kλ', 1000 * u.dimensionless_unscaled)
 
@@ -573,7 +579,6 @@ class UVFits:
             folder=input_file.parent
         )
         return proc
-
 
     @classmethod
     def run_gildas(cls, *args, **kwargs):
