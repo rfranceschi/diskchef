@@ -528,8 +528,8 @@ class UVFits:
             name: str,
             imager_executable: PathLike = "imager",
             script_template: str = """
-                        FITS {input_file} TO {name}
-                        READ UV {name}
+                        FITS "{input_file}" TO "{name}"
+                        READ UV "{name}"
                         UV_MAP
                         CLEAN
                         LUT {lut}
@@ -537,7 +537,7 @@ class UVFits:
                         LET SIZE 10
                         LET DO_CONTOUR NO
                         SHOW CLEAN
-                        HARDCOPY {name}.{device} /DEVICE {device} /OVERWRITE
+                        HARDCOPY "{name}.{device}" /DEVICE {device} /OVERWRITE
                 """,
             script_filename: PathLike = "last.imager",
             device: Union[Literal["pdf", "png", "eps", "ps"], str] = "pdf",
@@ -549,7 +549,7 @@ class UVFits:
 
         Args:
             input_file: path to .uvfits file to be imaged, passed to `script_template.format
-            name: basename for the output files, passed to `script_template.format
+            name: basename for the output files, passed to `script_template.format. Whitespaces are replaced with '_'
             imager_executable: path to imager executable, if not in system PATH
             script_template: string containing script with parameters listed in {} for .format
             script_filename: the filename for the created script
