@@ -512,8 +512,10 @@ class UVFits:
         with open(script_filename, "w") as fff:
             fff.write(textwrap.dedent(script))
 
+        command = f'cat "{script_filename.resolve()}" | {gildas_executable} -nw'
+        logging.debug("%s$ %s", folder, command)
         proc = subprocess.run(
-            f'cat "{script_filename.resolve()}" | "{gildas_executable}" -nw',
+            command,
             capture_output=True, encoding='utf8', shell=True,
             cwd=folder
         )
