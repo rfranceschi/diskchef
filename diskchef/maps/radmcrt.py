@@ -3,6 +3,7 @@ import logging
 from dataclasses import dataclass, field
 import os
 import re
+from pathlib import Path
 from typing import Union, Literal, NamedTuple
 import subprocess
 import platform
@@ -267,7 +268,7 @@ class RadMCBase(MapBase):
         if not self.table.is_in_zr_regular_grid:
             raise CHEFNotImplementedError("Grids, which are not cartesian in r, z/r are not supported.")
         try:
-            os.makedirs(self.folder)
+            Path(self.folder).mkdir(parents=True, exist_ok=False)
         except FileExistsError:
             self.logger.warn("Directory %s already exists! The results can be biased.", self.folder)
 
