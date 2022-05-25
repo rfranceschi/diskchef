@@ -14,4 +14,4 @@ from diskchef.lamda.line import Line
 from diskchef.engine.ctable import CTable
 from diskchef.maps import RadMCRTSingleCall, RadMCTherm
 from diskchef.uv import UVFits
-from diskchef.fitting import UltraNestFitter
+from diskchef.fitting import UltraNestFitter, Parameter
