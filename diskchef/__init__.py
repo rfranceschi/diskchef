@@ -20,7 +20,7 @@ from diskchef.fitting import UltraNestFitter, Parameter
 
 
 def logging_basic_config(
-        format='%(asctime)s (%(relativeCreated)10d) %(process)10d  %(name)-60s %(levelname)-8s %(message)s',
+        format='%(asctime)s (%(relativeCreated)10d ms) PID %(process)10d  %(name)-60s %(levelname)-8s %(message)s',
         datefmt='%m.%d.%Y %H:%M:%S',
         level=logging.WARNING,
         **kwargs
