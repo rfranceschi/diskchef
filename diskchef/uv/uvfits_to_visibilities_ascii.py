@@ -393,12 +393,11 @@ class UVFits:
         """
         if threads is not None:
             g_double.threads(threads)
+
         if not isinstance(data, spectral_cube.SpectralCube):
             data = spectral_cube.SpectralCube.read(data)
-
         if data.spectral_axis.unit != self.frequencies.unit:
             data = data.with_spectral_unit(self.frequencies.unit, velocity_convention="radio")
-
         self.logger.debug("Data spectral axis: %s", data.spectral_axis)
         self.logger.debug("UVTable spectral axis: %s", self.frequencies)
         if (data.spectral_axis.shape != self.frequencies.shape) or (
