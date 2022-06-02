@@ -2,7 +2,7 @@
 import copy
 
 import logging
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 import matplotlib.ticker
 import numpy as np
@@ -233,6 +233,7 @@ class Plot1D(Plot):
     yscale: Union[Literal["linear", "log", "symlog", "logit"], matplotlib.scale.ScaleBase] = "log"
     labels: bool = True
     cmap: Union[matplotlib.colors.Colormap, str] = None
+    plot_kwargs: dict = field(default_factory=dict)
 
     def __post_init__(self):
         super().__post_init__()
@@ -251,5 +252,5 @@ class Plot1D(Plot):
 
         for colname in self.data:
             data_to_plot = self.table.column_density(colname, self.x_axis).cgs
-            self.axes.plot(self.x_axis, data_to_plot, label=from_string(colname))
+            self.axes.plot(self.x_axis, data_to_plot, label=from_string(colname), **self.plot_kwargs)
         self.axes.legend()

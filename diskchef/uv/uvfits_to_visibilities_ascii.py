@@ -384,6 +384,10 @@ class UVFits:
         with open(filename, "wb") as uvpkl:
             pickle.dump((self.u, self.v), uvpkl)
 
+    @property
+    def degrees_of_freedom(self):
+        return np.prod(self.re.shape)
+
     def chi2_with(self, data=Union[PathLike, spectral_cube.SpectralCube], threads: int = None, **kwargs) -> float:
         """Method to calculate chi-squared of a given UV set with a data cube
 

@@ -25,5 +25,5 @@ def logging_basic_config(
         level=logging.WARNING,
         **kwargs
 ):
-    """Sets default logging configuratgion"""
+    """Sets default logging configuration"""
     logging.basicConfig(format=format, datefmt=datefmt, level=level, **kwargs)

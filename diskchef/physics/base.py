@@ -73,12 +73,13 @@ class PhysicsBase:
             self,
             axes: matplotlib.axes.Axes = None,
             table: CTable = None, folder=".",
+            data=("Gas density", "Dust density"),
             **kwargs
     ) -> Plot1D:
         """Plot 1D column plots of Gas and Dust density. Use the code of this method as an example."""
         if table is None:
             table = self.table
-        return Plot1D(table, axes=axes, data=["Gas density", "Dust density"], **kwargs)
+        return Plot1D(table, axes=axes, data=data, **kwargs)
 
     def check_temperatures(self):
         self.table.check_zeros("Gas temperature")
