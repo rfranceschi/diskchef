@@ -4,6 +4,7 @@ from dataclasses import dataclass
 import pickle
 import os
 import copy
+import logging
 
 import numpy as np
 from astropy import units as u
@@ -64,12 +65,7 @@ class SciKitChemistry(ChemistryBase):
             self._model = self.model
             self.logger.info("SciKit Transformer object is recognized")
         else:
-            with open(self.model, 'rb') as fff:
-                self._model = pickle.load(fff)
-            if hasattr(self._model, "predict"):
-                self.logger.info("SciKit Transformer object is read and recognized")
-            else:
-                raise CHEFNotImplementedError
+            self._model = self.load_scikit_model(self.model)
 
     def run_chemistry(self):
         all_arguments = copy.copy(self._model.X)
@@ -100,3 +96,26 @@ class SciKitChemistry(ChemistryBase):
         y = self._model.predict(X)
         for species, abunds in zip(self._model.y, y.T):
             self.table[species] = 10 ** abunds
+
+    @staticmethod
+    def load_scikit_model(filename: PathLike) -> sklearn.base.RegressorMixin:
+        """
+        Read pickled scikit regressor. Can be used as model argument to SciKitChemistry to avoid multiple loads
+
+        Args:
+            filename: path to file to be unpickled
+
+        Returns:
+            Regressor-like object with .predict(X), X, and y attributes
+
+        Raises:
+            FileNotFoundError if file is not found
+            CHEFNotImplementedError / NotImplementedError if unpickled object does not have the needed attributes
+        """
+        with open(filename, 'rb') as fff:
+            model = pickle.load(fff)
+        if hasattr(model, "predict") and hasattr(model, "X") and hasattr(model, 'y'):
+            logging.info("SciKit Transformer object is read and recognized")
+        else:
+            raise CHEFNotImplementedError
+        return model
