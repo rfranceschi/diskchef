@@ -14,7 +14,8 @@ from diskchef.physics import WilliamsBest100au, WilliamsBest2014
 from diskchef.chemistry import NonzeroChemistryWB2014, SciKitChemistry
 from diskchef.lamda.line import Line
 from diskchef.engine.ctable import CTable
-from diskchef.maps import RadMCRTSingleCall, RadMCTherm
+from diskchef.maps import RadMCRTLines, RadMCTherm
+from diskchef.maps.radmc_lines import RadMCRTSingleCall  # deprecated
 from diskchef.uv import UVFits
 from diskchef.fitting import UltraNestFitter, Parameter
 

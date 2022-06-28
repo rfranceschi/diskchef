@@ -10,7 +10,7 @@ from matplotlib import pyplot as plt
 
 from diskchef.chemistry.williams_best_co import NonzeroChemistryWB2014
 from diskchef.lamda.line import Line
-from diskchef.maps import RadMCRTSingleCall
+from diskchef.maps import RadMCRTLines
 from diskchef.physics.williams_best import WilliamsBest2014
 
 # Setting logger configuration to control output.
@@ -31,7 +31,7 @@ chem.run_chemistry()
 chem.table['13CO'] = chem.table['CO'] / 70
 chem.table['C18O'] = chem.table['CO'] / 550
 
-radmc = RadMCRTSingleCall(
+radmc = RadMCRTLines(
     chemistry=chem, line_list=[
         # Line(name='CO J=2-1', transition=2, molecule='CO'),
         Line(name='CO J=3-2', transition=3, molecule='CO'),
