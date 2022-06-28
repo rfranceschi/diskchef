@@ -29,6 +29,7 @@ class ReadAndesData(ChemistryBase):
     index: int = 0
     read_uv: bool = False
     read_ionization: bool = False
+    ionization_format: str = "ascii.commented_header"
 
     @property
     def table(self) -> CTable:
@@ -44,7 +45,7 @@ class ReadAndesData(ChemistryBase):
         physics = reader.read(os.path.join(self.folder, f"physical_structure_{index:05d}"))
         # if physics[["ir", "iz"]] != chemistry[["ir", "iz"]]:
         #     raise diskchef.engine.exceptions.CHEFRuntimeError("Physics and chemistry tables do not match!")
-        config = self._config_read(os.path.join(self.folder, "../config.ini"))
+        self._config = self._config_read(os.path.join(self.folder, "../config.ini"))
         table = CTable(
             [
                 physics["Radius"] << u.au,
@@ -62,6 +63,8 @@ class ReadAndesData(ChemistryBase):
         table["Dust density"] = physics["Dust density"] << (u.g / u.cm ** 3)
         table["Gas temperature"] = physics["Gas temperature"] << (u.K)
         table["Dust temperature"] = physics["Dust temperature"] << (u.K)
+        if "H2" not in chemistry.colnames and ("oH2" in chemistry.colnames and "pH2" in chemistry.colnames):
+            chemistry["H2"] = chemistry["oH2"] + chemistry["pH2"]
         table["n(H+2H2)"] = (chemistry["H+"] + chemistry["H"] + 2 * chemistry["H2"]) << (u.cm ** (-3))
         for species in chemistry.colnames[3:]:
             table[species] = (chemistry[species] << (u.cm ** (-3))) / table["n(H+2H2)"]
@@ -80,9 +83,18 @@ class ReadAndesData(ChemistryBase):
             try:
                 ionization = astropy.table.Table.read(os.path.join(self.folder, f"Ionization_Rate_{index:05d}"))
             except FileNotFoundError:
-                self.logger.info("Ionization rate file %:05d not found! Trying 00000 instead", index)
-                ionization = astropy.table.Table.read(os.path.join(self.folder, f"Ionization_Rate_00000"),
-                                                      format="ascii.basic")
+                if os.path.exists(os.path.join(self.folder, f"Ionization_Rate")):
+                    self.logger.info("Ionization rate file %:05d not found! Ionization_Rate is found instead", index)
+                    ionization = astropy.table.Table.read(
+                        os.path.join(self.folder, f"Ionization_Rate"),
+                        format=self.ionization_format
+                    )
+                else:
+                    self.logger.info("Ionization rate file %:05d not found! Trying 00000 instead", index)
+                    ionization = astropy.table.Table.read(
+                        os.path.join(self.folder, f"Ionization_Rate_00000"),
+                        format=self.ionization_format
+                    )
             if np.any(ionization[["ir", "iz"]] != physics[["ir", "iz"]]):
                 raise diskchef.engine.exceptions.CHEFRuntimeError("Physics and ionization tables do not match!")
             table["X ray ionization rate"] = ionization["IR_XR[1/s]"] << u.s ** (-1)
@@ -90,7 +102,7 @@ class ReadAndesData(ChemistryBase):
             table["Ionization rate"] = ionization["IR_Total[1/s]"] << u.s ** (-1)
 
         self.physics = diskchef.physics.base.PhysicsBase(
-            star_mass=float(config['stellar mass [MSun]']) * u.solMass,
+            star_mass=float(self._config['stellar mass [MSun]']) * u.solMass,
         )
         self.physics.table = table
 

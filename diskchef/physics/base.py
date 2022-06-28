@@ -28,6 +28,7 @@ class PhysicsBase:
     star_mass: u.solMass = 1 * u.solMass
     xray_plasma_temperature: u.K = 1e7 * u.K
     xray_luminosity: u.erg / u.s = 1e31 * u.erg / u.s
+    cr_padovani_use_l: bool = False
 
     def __post_init__(self):
         self.logger = logging.getLogger(__name__ + '.' + self.__class__.__qualname__)
@@ -72,12 +73,13 @@ class PhysicsBase:
             self,
             axes: matplotlib.axes.Axes = None,
             table: CTable = None, folder=".",
+            data=("Gas density", "Dust density"),
             **kwargs
     ) -> Plot1D:
         """Plot 1D column plots of Gas and Dust density. Use the code of this method as an example."""
         if table is None:
             table = self.table
-        return Plot1D(table, axes=axes, data=["Gas density", "Dust density"], **kwargs)
+        return Plot1D(table, axes=axes, data=data, **kwargs)
 
     def check_temperatures(self):
         self.table.check_zeros("Gas temperature")
@@ -167,6 +169,17 @@ class PhysicsBase:
                 integrals[i] = integral
         return u.Quantity(integrals)
 
+    def ionization(self, xray: str = "xray_bruderer", cosmic_ray: str = "cosmic_ray_padovani18"):
+        """Calculate ionization by running x-ray and cosmic ray methods"""
+
+        self.logger.debug("Calculating 'X ray ionization rate' according to %s", xray)
+        getattr(self, xray)()
+
+        self.logger.debug("Calculating 'CR ionization rate' according to %s", cosmic_ray)
+        getattr(self, cosmic_ray)()
+
+        self.table["Ionization rate"] = self.table["CR ionization rate"] + self.table["X ray ionization rate"]
+
     def xray_bruderer(self):
         """Calculate X-ray ionization rates using Bruderer+09 Table 3
 
@@ -215,10 +228,13 @@ class PhysicsBase:
         midplane_dict = dict(zip(midplane_r, midplane_coldens))
         coldens = u.Quantity([midplane_dict[r] for r in self.table.r]).to_value(u.cm ** -2)
 
+        if self.cr_padovani_use_l:
+            padovani = diskchef.physics.ionization.padovani18l
+        else:
+            padovani = diskchef.physics.ionization.padovani18h
         self.table["CR ionization rate"] = 0.5 * (
-                diskchef.physics.ionization.padovani18l(np.log10(density_upwards)) +
-                diskchef.physics.ionization.padovani18l(
-                    np.log10(2 * coldens - density_upwards))
+                padovani(np.log10(density_upwards)) +
+                padovani(np.log10(2 * coldens - density_upwards))
         ) / u.s
 
 

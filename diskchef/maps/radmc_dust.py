@@ -102,7 +102,7 @@ class RadMCTherm(RadMCBase):
                 print('0', file=file)
                 name_without_whitespaces = re.sub(r"\s*", "", dust_spice.name)
                 print(name_without_whitespaces, file=file)
-                shutil.copy(dust_spice.opacity_file, os.path.join(self.folder, f"{type}{name_without_whitespaces}.inp"))
+                shutil.copyfile(dust_spice.opacity_file, os.path.join(self.folder, f"{type}{name_without_whitespaces}.inp"))
             print('-----------------------------', file=file)
 
     def dust_density(self, out_file: PathLike = None) -> None:

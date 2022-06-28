@@ -436,6 +436,7 @@ class UltraNestFitter(Fitter):
 
         for i, result in enumerate(self.sampler.run_iter(**self.run_kwargs)):
             if not self.sampler.use_mpi or self.sampler.mpi_rank == 0:
+                self.logger.info("Step %d: %s", i, result)
                 tbl = QTable(self.sampler.results['weighted_samples']['points'],
                              names=[par.name for par in self.parameters])
                 tbl["lnprob"] = self.sampler.results['weighted_samples']['logl']
@@ -444,11 +445,16 @@ class UltraNestFitter(Fitter):
                 self._table = tbl
 
                 results = self.sampler.results['posterior']
-                for i, parameter in enumerate(self.parameters):
-                    parameter.fitted = results['mean'][i]
-                    parameter.fitted_error_up = results['errup'][i] - results['mean'][i]
-                    parameter.fitted_error_down = results['mean'][i] - results['errlo'][i]
-                    parameter.fitted_error = results['stdev'][i]
+                for iparam, parameter in enumerate(self.parameters):
+                    parameter.fitted = results['mean'][iparam]
+                    parameter.fitted_error_up = results['errup'][iparam] - results['mean'][iparam]
+                    parameter.fitted_error_down = results['mean'][iparam] - results['errlo'][iparam]
+                    parameter.fitted_error = results['stdev'][iparam]
+
+                try:
+                    self.sampler.plot()
+                except Exception as e:
+                    self.logger.error("Could not plot! %s", e)
 
                 if self.plot_corner:
                     try:
@@ -458,6 +464,7 @@ class UltraNestFitter(Fitter):
                     except ValueError as e:
                         self.logger.error("Could not make corner plot for %d:", i)
                         self.logger.error(e)
+                self.save(self.log_dir / f"fitter_{i:06d}.sav")
 
         if not self.sampler.use_mpi or self.sampler.mpi_rank == 0:
             self._post_fit()

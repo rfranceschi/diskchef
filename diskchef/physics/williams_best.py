@@ -22,8 +22,8 @@ class WilliamsBest2014(ParametrizedPhysics):
     >>> physics = WilliamsBest2014()
     >>> physics  # doctest: +NORMALIZE_WHITESPACE
     WilliamsBest2014(star_mass=<Quantity 1. solMass>, xray_plasma_temperature=<Quantity 10000000. K>,
-                     xray_luminosity=<Quantity 1.e+31 erg / s>, r_min=<Quantity 0.1 AU>, r_max=<Quantity 500. AU>,
-                     zr_max=0.7, radial_bins=100, vertical_bins=100, dust_to_gas=0.01,
+                     xray_luminosity=<Quantity 1.e+31 erg / s>, cr_padovani_use_l=False, r_min=<Quantity 0.1 AU>,
+                     r_max=<Quantity 500. AU>, zr_max=0.7, radial_bins=100, vertical_bins=100, dust_to_gas=0.01,
                      gas_mass=<Quantity 0.001 solMass>, tapering_radius=<Quantity 100. AU>,
                      tapering_gamma=0.75, midplane_temperature_1au=<Quantity 200. K>,
                       atmosphere_temperature_1au=<Quantity 1000. K>, temperature_slope=0.55,
@@ -31,7 +31,7 @@ class WilliamsBest2014(ParametrizedPhysics):
     >>> # Defaults can be overridden
     >>> WilliamsBest2014(star_mass=2 * u.solMass, r_max=200 * u.au)  # doctest: +NORMALIZE_WHITESPACE
     WilliamsBest2014(star_mass=<Quantity 2. solMass>, xray_plasma_temperature=<Quantity 10000000. K>,
-                     xray_luminosity=<Quantity 1.e+31 erg / s>, r_min=<Quantity 0.1 AU>,
+                     xray_luminosity=<Quantity 1.e+31 erg / s>, cr_padovani_use_l=False, r_min=<Quantity 0.1 AU>,
                      r_max=<Quantity 200. AU>, zr_max=0.7, radial_bins=100, vertical_bins=100, dust_to_gas=0.01,
                      gas_mass=<Quantity 0.001 solMass>, tapering_radius=<Quantity 100. AU>, tapering_gamma=0.75,
                      midplane_temperature_1au=<Quantity 200. K>, atmosphere_temperature_1au=<Quantity 1000. K>,
@@ -231,3 +231,22 @@ class WilliamsBest100au(WilliamsBest2014):
 
         self.midplane_temperature_1au = self.midplane_temperature_100au * 100 ** self.temperature_slope
         self.atmosphere_temperature_1au = self.atmosphere_temperature_100au * 100 ** self.temperature_slope
+
+
+@dataclass
+class WB100auWithSmoothInnerGap(WilliamsBest100au):
+    @cached_property
+    def column_density_norm(self) -> u.g / u.cm ** 2:
+        _r = np.geomspace(self.inner_radius / 10, self.tapering_radius * 10, 1000).to(u.au)
+        return self.gas_mass / np.trapz(2 * np.pi * _r * self._column_density_unscaled(_r), _r)
+
+    @u.quantity_input
+    def _column_density_unscaled(self, r: u.au) -> u.dimensionless_unscaled:
+        return (r / self.tapering_radius) ** (-self.tapering_gamma) \
+               * np.exp(-(r / self.tapering_radius) ** (2 - self.tapering_gamma)) \
+               * np.exp(-(r / self.inner_radius) ** (self.tapering_gamma - 2))
+
+    @u.quantity_input
+    def column_density(self, r: u.au) -> u.g / u.cm ** 2:
+        """Gas column density at given radius"""
+        return self.column_density_norm * self._column_density_unscaled(r)
