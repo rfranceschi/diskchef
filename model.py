@@ -4,7 +4,7 @@ import astropy.units as u
 from diskchef.chemistry.scikit import SciKitChemistry
 from diskchef.dust_opacity import dust_files
 from diskchef.lamda.line import Line
-from diskchef.maps import RadMCTherm, RadMCRTSingleCall
+from diskchef.maps import RadMCTherm, RadMCRTLines
 from diskchef.physics.multidust import DustPopulation
 from diskchef.physics.williams_best import WilliamsBest2014
 
@@ -81,7 +81,7 @@ class ProposalModel:
         folder_rt_gas = self.folder / "radmc_gas"
         folder_rt_gas.mkdir(exist_ok=True)
 
-        disk_map = RadMCRTSingleCall(
+        disk_map = RadMCRTLines(
             chemistry=self.disk_chemical_model, line_list=line_list,
             radii_bins=radii_bins, theta_bins=theta_bins,
             folder=folder_rt_gas,

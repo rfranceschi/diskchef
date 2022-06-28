@@ -13,7 +13,7 @@ from astropy.table import QTable
 
 from diskchef.chemistry.andes import ReadAndesData
 from diskchef.lamda.line import Line
-from diskchef.maps import RadMCRTSingleCall
+from diskchef.maps import RadMCRTLines
 
 if __name__ == '__main__':
 
@@ -62,7 +62,7 @@ if __name__ == '__main__':
         fig.savefig(folder / f"report_{fileindex}.pdf")
         fig2.savefig(folder / f"report_{fileindex}_coldens.pdf")
 
-        map = RadMCRTSingleCall(
+        map = RadMCRTLines(
             folder=folder,
             chemistry=chem, line_list=line_list, outer_radius=200 * u.au, radii_bins=30, theta_bins=30)
         map.create_files(channels_per_line=200, window_width=8 * u.km / u.s)
