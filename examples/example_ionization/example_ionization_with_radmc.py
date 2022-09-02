@@ -17,7 +17,7 @@ import diskchef.maps
 import diskchef.physics.multidust
 import diskchef.chemistry.scikit
 from diskchef.physics.williams_best import WilliamsBest2014
-from diskchef.maps.radmc_lines import RadMCRTSingleCall
+from diskchef.maps.radmc_lines import RadMCRTLines
 from diskchef.lamda.line import Line
 
 logging.basicConfig(
@@ -107,7 +107,7 @@ fig.savefig(folder / "report_ions.pdf")
 full_chemistry.add_co_isotopologues()
 simple_chemistry.add_co_isotopologues()
 
-radmc = RadMCRTSingleCall(
+radmc = RadMCRTLines(
     chemistry=full_chemistry, line_list=[
         Line(name='CO J=2-1', transition=1, molecule='CO'),
         Line(name='CO J=3-2', transition=3, molecule='CO'),
@@ -125,7 +125,7 @@ radmc.run(
     velocity_offset=6 * u.km / u.s, threads=8, distance=128 * u.pc,
 )
 
-radmc = RadMCRTSingleCall(
+radmc = RadMCRTLines(
     chemistry=simple_chemistry, line_list=[
         Line(name='CO J=2-1', transition=1, molecule='CO'),
         Line(name='CO J=3-2', transition=3, molecule='CO'),

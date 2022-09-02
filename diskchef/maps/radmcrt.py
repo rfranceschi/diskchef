@@ -3,6 +3,7 @@ import logging
 from dataclasses import dataclass, field
 import os
 import re
+from functools import cached_property
 from pathlib import Path
 from typing import Union, Literal, NamedTuple
 import subprocess
@@ -49,6 +50,7 @@ class RadMCOutput:
     object_name: str = ""
     distance: u.pc = None
     cloud: Cloud = None
+    mode: Literal["image", "image tracetau"] = "image"
 
     def __post_init__(self):
         self.logger = logging.getLogger(__name__ + '.' + self.__class__.__qualname__)
@@ -139,10 +141,33 @@ class RadMCOutput:
             except Exception as e:
                 self.logger.warning("Something went wrong querying Simbad: %s", e)
 
-    def plot_channel_map(self, window=500 * u.au, cmap="Blues",
-                         velocity_offset: u.km / u.s = 0 * u.km / u.s) -> Figure:
+    @cached_property
+    def unit_for_channel_map(self) -> u.Unit:
+        if self.mode == "image":
+            return u.K
+        elif self.mode == "image tracetau":
+            return u.dimensionless_unscaled
+        elif self.mode == "tausurf":
+            return u.au
+        else:
+            self.logger.error("Unknown mode %s")
+            return u.dimensionless_unscaled
 
-        nx = ny = 4
+    def plot_channel_map(
+            self,
+            window=500 * u.au,
+            cmap: Union[matplotlib.colors.Colormap, str] = None,
+            velocity_offset: u.km / u.s = 0 * u.km / u.s,
+            nx=4, ny=4,
+    ) -> Figure:
+        symnorm = False
+        if cmap is None:
+            if self.mode == "tausurf":
+                cmap = "coolwarm"
+                symnorm = True
+            else:
+                cmap = "Blues"
+
         cube = SpectralCube.read(self.file_fits)
         center = cube.wcs.celestial.pixel_to_world(cube.shape[1] / 2, cube.shape[2] / 2)
         self._check_distance()
@@ -155,13 +180,13 @@ class RadMCOutput:
         cube.allow_huge_operations = True
         cube: SpectralCube = (
             cube.subcube_from_regions([region])
-                .with_spectral_unit(u.km / u.s, velocity_convention="radio")
+            .with_spectral_unit(u.km / u.s, velocity_convention="radio")
         )
         try:
-            cube = cube.to(u.K)
+            cube = cube.to(self.unit_for_channel_map)
         except ValueError as e:
             if cube._beam is None:
-                cube = cube.with_beam(Beam(1e-10 * u.arcsec)).to(u.K)
+                cube = cube.with_beam(Beam(1e-10 * u.arcsec)).to(self.unit_for_channel_map)
             else:
                 raise ValueError(e)
 
@@ -170,7 +195,11 @@ class RadMCOutput:
         # downsampled: SpectralCube = cube.downsample_axis(4, axis=0).with_spectral_unit(u.km / u.s)
         downsampled = cube[central_channel - nx * ny // 2: central_channel + nx * ny // 2 + 1]
 
-        norm = Normalize(0, round(0.9 * downsampled.max().value, 1))
+        maxval = round(0.9 * downsampled.max().value, 1)
+        if symnorm:
+            norm = Normalize(-maxval, maxval)
+        else:
+            norm = Normalize(0, maxval)
         aspect_ratio = downsampled.shape[2] / float(downsampled.shape[1])
         fig_smallest_dim_inches = 5
         gridratio = ny / float(nx) * aspect_ratio

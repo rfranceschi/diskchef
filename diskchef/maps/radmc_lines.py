@@ -1,3 +1,4 @@
+import warnings
 from contextlib import redirect_stdout
 import typing
 import io
@@ -9,6 +10,7 @@ import os
 from dataclasses import dataclass
 
 import numpy as np
+from astropy.io.fits import Header
 
 from matplotlib.figure import Figure
 import astropy.coordinates
@@ -20,6 +22,7 @@ from spectral_cube import SpectralCube
 import radmc3dPy
 
 import diskchef
+from diskchef.engine.exceptions import CHEFNotImplementedError
 from diskchef.engine.other import PathLike
 from diskchef.lamda.line import Line, DummyLine
 from diskchef.maps.radmcrt import RadMCBase, RadMCOutput
@@ -34,15 +37,24 @@ class RadMCRTImage(RadMCBase):
 
     Runs a generation of a continuum image, can be subclassed for line cube
     """
+    allowed_modes = ["image"]
+
     velocity: u.km / u.s = 0 * u.km / u.s
+    mode: typing.Literal["image"] = 'image'
 
     def __post_init__(self):
         super().__post_init__()
+        self.check_mode()
+
+    def check_mode(self):
+        if self.mode not in self.allowed_modes:
+            self.logger.error(f"`mode` should be one of {self.allowed_modes}. Undefined behavior is expected")
 
     @property
-    def mode(self) -> str:
-        """Mode of RadMC: `mctherm`, `image`, `spectrum`, `sed`"""
-        return 'image'
+    def command(self) -> str:
+        return (
+            f"{self.executable} {self.mode} "
+        )
 
     @u.quantity_input
     def run(
@@ -55,7 +67,7 @@ class RadMCRTImage(RadMCBase):
         self.logger.info("Running radmc3d")
         start = time.time()
         wavelength = wav.to(u.um, equivalencies=u.spectral())
-        command = (f"{self.executable} {self.mode} "
+        command = (self.command +
                    f"incl {inclination.to_value(u.deg)} "
                    f"posang {position_angle.to_value(u.deg)} "
                    f"setthreads {threads} "
@@ -148,19 +160,43 @@ class RadMCRTImage(RadMCBase):
         header["HISTORY"] = "(G.V. Smirnov-Pinchukov, https://gitlab.com/SmirnGreg/diskchef)"
         header["HISTORY"] = "using RadMC3D (C. Dullemond, https://github.com/dullemond/radmc3d-2.0)"
         header["RESTFREQ"] = restfreq
+        self._extra_header(header)
 
         cube = SpectralCube(
-            data=np.rot90(im.image * 1e23, axes=[0, 1]) << (u.Jy / u.sr),
+            data=np.rot90(im.image * self.factor, axes=[0, 1]) << self.unit,
             wcs=WCS(wcs_dict), header=header
         )
 
-        fitsname = name.replace(".out", ".fits")
-
+        fitsname = name.replace(".out", self.fitsname_suffix + ".fits")
         cube.write(fitsname, overwrite=True)
 
         self.fitsfiles.append(fitsname)
         self.logger.info("Saved as %s and %s", name, fitsname)
+        self.logger.info("Saved as %s and %s", name, fitsname)
         return fitsname
+
+    @property
+    def unit(self) -> u.Unit:
+        """Unit of the returned data"""
+        return u.Jy / u.sr
+
+    @property
+    def factor(self) -> float:
+        """Factor of the returned data relative to self.unit"""
+        return 1e23
+
+    def _extra_header(self, header: Header, **kwargs):
+        """Add extra header items into the output fits files"""
+        for key, value in kwargs.items():
+            try:
+                header[key] = value
+            except Exception as e:
+                self.logger.error(e)
+
+    @property
+    def fitsname_suffix(self) -> str:
+        """Additional suffix of an output fits file"""
+        return ""
 
 
 @dataclass
@@ -289,7 +325,7 @@ class RadMCRT(RadMCRTImage):
             n_channels: int = 100, threads: int = 1, lineobj: Line = None, npix: int = 100,
     ) -> None:
         start = time.time()
-        command = (f"{self.executable} {self.mode} "
+        command = (self.command +
                    f"imolspec {molecule} "
                    f"iline {line} "
                    f"widthkms 10 "
@@ -310,7 +346,7 @@ class RadMCRT(RadMCRTImage):
         )
         self.logger.info("radmc3d finished after %s", timedelta(seconds=time.time() - start))
         self.catch_radmc_messages(proc)
-        output = RadMCOutput(lineobj)
+        output = RadMCOutput(lineobj, mode=self.mode)
         if name is not None:
             newname = os.path.join(self.folder, name)
             shutil.move(os.path.join(self.folder, "image.out"), newname)
@@ -335,7 +371,7 @@ class RadMCRT(RadMCRTImage):
 
 
 @dataclass
-class RadMCRTSingleCall(RadMCRT):
+class RadMCRTLines(RadMCRT):
     """
     Subclass of RadMCRT to run RadMC only once for all the required frequencies
 
@@ -344,7 +380,7 @@ class RadMCRTSingleCall(RadMCRT):
     >>> physics = diskchef.physics.WilliamsBest2014(star_mass=0.52 * u.solMass, radial_bins=10, vertical_bins=10)
     >>> chem = diskchef.chemistry.NonzeroChemistryWB2014(physics)
     >>> chem.run_chemistry()
-    >>> mapping = RadMCRTSingleCall(chemistry=chem, line_list=[
+    >>> mapping = RadMCRTLines(chemistry=chem, line_list=[
     ...     Line(name='CO J=2-1', transition=1, molecule='CO'),
     ...     Line(name='CO J=3-2', transition=2, molecule='CO'),
     ... ])
@@ -420,12 +456,12 @@ class RadMCRTSingleCall(RadMCRT):
         """
         self.logger.info("Running radmc3d")
         start = time.time()
-        command = (f"{self.executable} {self.mode} "
+        command = (self.command +
                    f"incl {inclination.to(u.deg).value} "
                    f"posang {position_angle.to(u.deg).value} "
                    f"setthreads {threads} "
-                   "loadlambda "
                    f"npix {npix} "
+                   "loadlambda "
                    )
         self.logger.info("Running radmc3d for all transition at once: %s", command)
         proc = subprocess.run(
@@ -440,7 +476,7 @@ class RadMCRTSingleCall(RadMCRT):
         names = [os.path.join(self.folder, f"{line.name}_image.out") for line in self.ordered_line_list]
         self.split(names=names)
         for line, name in zip(self.ordered_line_list, names):
-            self.outputs[line] = RadMCOutput(line, file_radmc=name, distance=distance)
+            self.outputs[line] = RadMCOutput(line, file_radmc=name, distance=distance, mode=self.mode)
             self.outputs[line].file_fits = self.radmc_to_fits(name, line, distance)
 
     def channel_maps(
@@ -506,3 +542,69 @@ class RadMCRTSingleCall(RadMCRT):
 
             for file in files:
                 file.close()
+
+
+@dataclass
+class RadMCRTSingleCall(RadMCRTLines):
+    """Deprecated in favor of RadMCRTLines"""
+
+    def __post_init__(self):
+        super().__post_init__()
+        self.logger.warning("Deprecation warning. Renamed to RadMCRTLines!")
+
+
+@dataclass
+class RadMCRTLinesTraceTau(RadMCRTLines):
+    """Class to calculate optical depth map in lines"""
+    allowed_modes = ["image tracetau"]
+    mode: typing.Literal["image tracetau"] = "image tracetau"
+
+    @property
+    def unit(self) -> u.Unit:
+        """Unit of the returned data"""
+        return u.dimensionless_unscaled
+
+    @property
+    def factor(self) -> float:
+        """Factor of the returned data relative to self.unit"""
+        return 1.
+
+    def _extra_header(self, header: Header, **kwargs):
+        """Add extra header items into the output fits files"""
+        super()._extra_header(header, **{"HISTORY": "Optical depth map"}, **kwargs)
+
+    @property
+    def fitsname_suffix(self) -> str:
+        """Additional suffix of an output fits file"""
+        return "_tracetau"
+
+
+@dataclass
+class RadMCRTLinesTauSurf(RadMCRTLines):
+    """Class to calculate optical depth map in lines"""
+    allowed_modes = ["tausurf"]
+    mode: typing.Literal["image tracetau"] = "tausurf"
+    tau: float = 1.
+
+    @property
+    def unit(self) -> u.Unit:
+        """Unit of the returned data"""
+        return u.au
+
+    @property
+    def command(self) -> str:
+        return super().command + f"{self.tau} "
+
+    @property
+    def factor(self) -> float:
+        """Factor of the returned data relative to self.unit"""
+        return (u.cm / u.au).si.scale
+
+    def _extra_header(self, header: Header, **kwargs):
+        """Add extra header items into the output fits files"""
+        super()._extra_header(header, **{"HISTORY": f"Optical depth tau={self.tau: .2e} map"}, **kwargs)
+
+    @property
+    def fitsname_suffix(self) -> str:
+        """Additional suffix of an output fits file"""
+        return f"_tau_{self.tau: .2e}"

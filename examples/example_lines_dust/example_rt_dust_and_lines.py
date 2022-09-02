@@ -5,7 +5,7 @@ from matplotlib import pyplot as plt
 
 from diskchef.chemistry.scikit import SciKitChemistry
 from diskchef.chemistry import NonzeroChemistryWB2014
-from diskchef.maps import RadMCTherm, RadMCRTSingleCall
+from diskchef.maps import RadMCTherm, RadMCRTLines
 from diskchef.physics.williams_best import WilliamsBest2014
 from diskchef.physics.multidust import DustPopulation
 from diskchef.dust_opacity.dust_files import dust_files
@@ -55,7 +55,7 @@ physics.plot_temperatures(axes=ax[0, 1])
 chem.plot_chemistry(axes=ax[1, 0], species1="CO", species2="HCO+")
 chem.plot_chemistry(axes=ax[1, 1], species1="CN", species2="HCN")
 
-radmc = RadMCRTSingleCall(
+radmc = RadMCRTLines(
     chemistry=chem, line_list=[
         # Line(name='CO J=2-1', transition=1, molecule='CO'),
         Line(name='CO J=3-2', transition=3, molecule='CO'),
