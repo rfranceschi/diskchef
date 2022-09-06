@@ -278,9 +278,9 @@ else:
 class RadMCBase(MapBase):
     executable: PathLike = RADMC_DEFAULT_EXEC
     folder: PathLike = 'radmc'
-    radii_bins: Union[None, int] = None
-    theta_bins: Union[None, int] = None
-    outer_radius: Union[None, u.Quantity] = None
+    radii_bins: int = None
+    theta_bins: int = None
+    outer_radius: u.Quantity = None
     verbosity: int = 0
     wavelengths: u.Quantity = field(default=np.geomspace(0.0912, 1000, 100) * u.um)
     modified_random_walk: bool = True
@@ -288,9 +288,10 @@ class RadMCBase(MapBase):
     nphot_therm: int = None
     nphot_mono: int = None
     nphot_spec: int = None
-    coordinate: Union[str, SkyCoord] = None
+    camera_refine_criterion: float = None
+    coordinate: SkyCoord = None
     external_source_type: Literal["Draine1978", "WeingartnerDraine2001", "None"] = None
-    external_source_multiplier: float = 1
+    sloppy: bool = False
 
     def __post_init__(self):
         super().__post_init__()
@@ -406,6 +407,8 @@ class RadMCBase(MapBase):
                 print(f"nphot_mono = {int(self.nphot_mono)}", file=file)
             if self.nphot_spec is not None:
                 print(f"nphot_spec = {int(self.nphot_spec)}", file=file)
+            if self.camera_refine_criterion is not None:
+                print(f"camera_refine_criterion = {float(self.camera_refine_criterion)}", file=file)
 
     def wavelength_micron(self, out_file: PathLike = None) -> None:
         """Creates a `wavelength_micron.inp` file"""

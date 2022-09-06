@@ -72,8 +72,11 @@ class RadMCRTImage(RadMCBase):
                    f"posang {position_angle.to_value(u.deg)} "
                    f"setthreads {threads} "
                    f"npix {npix} "
-                   f"lambda {wavelength.value}"
+                   f"lambda {wavelength.value} "
                    )
+        if self.sloppy:
+            command += 'sloppy'
+        print(command)
         self.logger.info("Running radmc3d for wavelength %.4e um: %s", wavelength.value, command)
         proc = subprocess.run(
             command,
@@ -463,6 +466,8 @@ class RadMCRTLines(RadMCRT):
                    f"npix {npix} "
                    "loadlambda "
                    )
+        if self.sloppy:
+            command += 'sloppy '
         self.logger.info("Running radmc3d for all transition at once: %s", command)
         proc = subprocess.run(
             command,
