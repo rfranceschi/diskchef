@@ -587,6 +587,6 @@ class UVFits:
 
     @classmethod
     def run_gildas(cls, *args, **kwargs):
-        """Deprecated, renamed to run_imaging. Alsom see run_gildas_script to run arbitrary GILDAS scripts."""
+        """Deprecated, renamed to run_imaging. Also see run_gildas_script to run arbitrary GILDAS scripts."""
         warnings.warn("run_gildas is deprecated, use run_imaging instead", DeprecationWarning)
         return cls.run_imaging(*args, **kwargs)

@@ -10,6 +10,7 @@ import subprocess
 import platform
 
 import chemical_names
+from astropy.coordinates.matrix_utilities import rotation_matrix
 from matplotlib.figure import Figure
 from matplotlib.gridspec import GridSpec
 from radio_beam import Beam
@@ -21,7 +22,7 @@ import diskchef.maps.radiation_fields
 import numpy as np
 from astropy import constants as c
 from astropy import units as u
-from astropy.coordinates import SkyCoord
+from astropy.coordinates import SkyCoord, CartesianRepresentation
 from matplotlib import pyplot as plt
 from matplotlib.colors import Normalize
 import matplotlib.patches
@@ -29,7 +30,7 @@ import spectral_cube.utils
 import radmc3dPy
 
 from diskchef.engine.ctable import CTable
-from diskchef.engine.exceptions import CHEFNotImplementedError, CHEFTypeError
+from diskchef.engine.exceptions import CHEFNotImplementedError, CHEFTypeError, CHEFValueError
 from diskchef.engine.other import PathLike
 from diskchef.lamda.line import Line
 from diskchef.maps.base import MapBase
@@ -50,7 +51,7 @@ class RadMCOutput:
     object_name: str = ""
     distance: u.pc = None
     cloud: Cloud = None
-    mode: Literal["image", "image tracetau"] = "image"
+    mode: Literal["image", "image tracetau", "tausurf"] = "image"
 
     def __post_init__(self):
         self.logger = logging.getLogger(__name__ + '.' + self.__class__.__qualname__)
@@ -262,6 +263,56 @@ class RadMCOutput:
         fig.suptitle(f"{self.object_name} {chemical_names.from_string(self.line.molecule)}")
         return fig
 
+    def extract_surface(self):
+        """
+        Extract surface for tausurf mode
+
+        Raises:
+            CHEFValueError if used for other mode outputs
+        """
+        if self.mode != "tausurf":
+            raise CHEFValueError(f"Mode is '{self.mode}', 'tausurf' expected!")
+
+        cube = SpectralCube.read(self.file_fits)
+        try:
+            cube = cube.with_spectral_unit(u.km / u.s, velocity_convention="radio")
+        except:
+            self.logger.warning("Could not convert cube to km/s")
+        pixscale = (cube.wcs.celestial.proj_plane_pixel_area() ** 0.5 * self.distance).to(u.au,
+                                                                                          u.dimensionless_angles())
+        vscale = cube.wcs.pixel_scale_matrix[-1, -1] * u.Unit(cube.wcs.world_axis_units[-1])
+        x_grid = (np.arange(cube.wcs.celestial.pixel_shape[0]) - cube.wcs.celestial.pixel_shape[0] / 2 + 0.5) * pixscale
+        y_grid = (np.arange(cube.wcs.celestial.pixel_shape[1]) - cube.wcs.celestial.pixel_shape[1] / 2 + 0.5) * pixscale
+        v_grid = (np.arange(cube.wcs.pixel_shape[-1]) - cube.wcs.celestial.pixel_shape[-1] / 2 + 0.5) * vscale
+        x, y, v = np.meshgrid(x_grid, y_grid, v_grid)
+        z = np.swapaxes(cube.filled_data[:].to(u.au), 0, -1)
+
+        mask = (np.abs(z) < x.max())
+        xpl = x[mask].flatten()
+        ypl = y[mask].flatten()
+        zpl = z[mask].flatten()
+        vpl = v[mask].flatten()
+
+
+
+        rotation_posang = rotation_matrix(-position_angle, axis='z')
+        rotation_incl = rotation_matrix(inclination, axis='x')
+        coords = CartesianRepresentation(x=xpl, y=ypl, z=zpl)
+        coords_posang_incl = coords.transform(rotation_posang).transform(rotation_incl)
+
+        r = (coords_posang_incl.x ** 2 + coords_posang_incl.y ** 2) ** 0.5
+        zr = coords_posang_incl.z / r
+
+        self.tausurf_coords = dict(
+            r=r,
+            zr=zr,
+            x=xpl,
+            y=ypl,
+            z=zpl,
+            v=vpl
+        )
+        return self.tausurf_coords
+
 
 if platform.system() == "Windows":
     logging.warning(
@@ -376,7 +427,7 @@ class RadMCBase(MapBase):
 
     def interpolate(self, column: str) -> None:
         """Adds a new `column` to `self.polar_table` with the data iterpolated from `self.table`"""
-        self.polar_table[column] = self.table.interpolate(column)(self.polar_table.r, self.polar_table.z)
+        self.polar_table[column] = self.table.interpolate(column)(self.polar_table.r, np.abs(self.polar_table.z))
 
     def interpolate_back(self, column: str) -> None:
         """Adds a new `column` to `self.table` with the data iterpolated from `self.polar_table`"""

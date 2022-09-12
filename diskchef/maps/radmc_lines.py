@@ -67,9 +67,11 @@ class RadMCRTImage(RadMCBase):
         self.logger.info("Running radmc3d")
         start = time.time()
         wavelength = wav.to(u.um, equivalencies=u.spectral())
+        incl = inclination.to_value(u.deg)
+        posang = position_angle.to_value(u.deg)
         command = (self.command +
-                   f"incl {inclination.to_value(u.deg)} "
-                   f"posang {position_angle.to_value(u.deg)} "
+                   f"incl {incl} "
+                   f"posang {posang} "
                    f"setthreads {threads} "
                    f"npix {npix} "
                    f"lambda {wavelength.value}"
@@ -90,11 +92,13 @@ class RadMCRTImage(RadMCBase):
         self.radmc_to_fits(
             name=newname,
             line=wavelength,
-            distance=distance
+            distance=distance,
+            incl=incl,
+            posang=posang
         )
 
     def radmc_to_fits(
-            self, name: PathLike, line: typing.Union[Line, u.Quantity], distance,
+            self, name: PathLike, line: typing.Union[Line, u.Quantity], distance, **kwargs
     ) -> PathLike:
         """Saves RadMC3D `image.out` files as FITS files
 
@@ -160,7 +164,7 @@ class RadMCRTImage(RadMCBase):
         header["HISTORY"] = "(G.V. Smirnov-Pinchukov, https://gitlab.com/SmirnGreg/diskchef)"
         header["HISTORY"] = "using RadMC3D (C. Dullemond, https://github.com/dullemond/radmc3d-2.0)"
         header["RESTFREQ"] = restfreq
-        self._extra_header(header)
+        self._extra_header(header, **kwargs)
 
         cube = SpectralCube(
             data=np.rot90(im.image * self.factor, axes=[0, 1]) << self.unit,
@@ -550,6 +554,7 @@ class RadMCRTSingleCall(RadMCRTLines):
 
     def __post_init__(self):
         super().__post_init__()
+        warnings.warn("Renamed to RadMCRTLines!", DeprecationWarning)
         self.logger.warning("Deprecation warning. Renamed to RadMCRTLines!")
 
 

@@ -10,14 +10,12 @@ from diskchef.physics.williams_best import WilliamsBest2014
 from diskchef.physics.multidust import DustPopulation
 from diskchef.dust_opacity.dust_files import dust_files
 from diskchef.lamda.line import Line
+from diskchef import logging_basic_config
+
+logging_basic_config()
 
 from diskchef.maps.radmcrt import RadMCOutput
 
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s   %(name)-60s %(levelname)-8s %(message)s',
-    datefmt='%m.%d.%Y %H:%M:%S',
-)
 logging.captureWarnings(True)
 logger = logging.getLogger(__name__)
 
