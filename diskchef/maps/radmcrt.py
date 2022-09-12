@@ -270,6 +270,8 @@ class RadMCOutput:
         Raises:
             CHEFValueError if used for other mode outputs
         """
+        raise NotImplementedError
+
         if self.mode != "tausurf":
             raise CHEFValueError(f"Mode is '{self.mode}', 'tausurf' expected!")
 
@@ -293,7 +295,7 @@ class RadMCOutput:
         zpl = z[mask].flatten()
         vpl = v[mask].flatten()
 
-
+        # This is unfinished -- tau.ipynb has a better prototype for the same purpose
 
         rotation_posang = rotation_matrix(-position_angle, axis='z')
         rotation_incl = rotation_matrix(inclination, axis='x')
