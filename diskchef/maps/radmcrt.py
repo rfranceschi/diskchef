@@ -288,7 +288,7 @@ class RadMCBase(MapBase):
     nphot_therm: int = None
     nphot_mono: int = None
     nphot_spec: int = None
-    camera_refine_criterion: float = None
+    camera_refine_criterion: float = 1
     coordinate: SkyCoord = None
     external_source_type: Literal["Draine1978", "WeingartnerDraine2001", "None"] = None
     sloppy: bool = False
