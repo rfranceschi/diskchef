@@ -158,9 +158,11 @@ class RadMCOutput:
             window=500 * u.au,
             cmap: Union[matplotlib.colors.Colormap, str] = None,
             velocity_offset: u.km / u.s = 0 * u.km / u.s,
-            nx=4, ny=4,
+            nx: int = 4, ny: int = 4,
+            symnorm: bool = False,
+            norm: Normalize = None,
     ) -> Figure:
-        symnorm = False
+
         if cmap is None:
             if self.mode == "tausurf":
                 cmap = "coolwarm"
@@ -196,7 +198,7 @@ class RadMCOutput:
         downsampled = cube[central_channel - nx * ny // 2: central_channel + nx * ny // 2 + 1]
 
         maxval = round(0.9 * downsampled.max().value, 1)
-        if symnorm:
+        if symnorm and (norm is None):
             norm = Normalize(-maxval, maxval)
         else:
             norm = Normalize(0, maxval)
