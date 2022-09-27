@@ -258,7 +258,7 @@ class RadMCOutput:
                     ax.set_ylabel(f"[{window_unit.to_string('latex_inline')}]", labelpad=-18)
         else:
             cax = fig.add_axes([0.90, 0.1, 0.03, 0.8])
-            cb = fig.colorbar(im, cax=cax)
+            cb = fig.colorbar(im, cax=cax, norm=norm)
             cb.ax.set_xlabel(f"\n[{downsampled.unit.to_string('latex')}]")
         gs.update(left=0.1, right=0.9, top=0.9, bottom=0.1)
         fig.suptitle(f"{self.object_name} {chemical_names.from_string(self.line.molecule)}")

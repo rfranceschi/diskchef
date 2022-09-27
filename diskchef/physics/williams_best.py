@@ -73,6 +73,7 @@ class WilliamsBest2014(ParametrizedPhysics):
     molar_mass: u.kg / u.mol = 2.33 * u.g / u.mol
     inner_radius: u.au = 1 * u.au
     inner_depletion: float = 1e-6
+    z_q: float = 4.
 
     @u.quantity_input
     def gas_temperature(self, r: u.au, z: u.au) -> u.K:
@@ -101,13 +102,13 @@ class WilliamsBest2014(ParametrizedPhysics):
                 ) ** 0.5
         ).to(u.au)
         temperature = u.Quantity(np.zeros_like(z)).value << u.K
-        indices_atmosphere = z >= 4 * pressure_scalehight
+        indices_atmosphere = z >= self.z_q * pressure_scalehight
         indices_midplane = ~ indices_atmosphere
         temperature[indices_atmosphere] = temp_atmosphere[indices_atmosphere]
         temperature[indices_midplane] = (
                 temp_midplane[indices_midplane]
                 + (temp_atmosphere[indices_midplane] - temp_midplane[indices_midplane])
-                * np.sin((np.pi * z[indices_midplane] / (8 * pressure_scalehight[indices_midplane]))
+                * np.sin((np.pi * z[indices_midplane] / (2 * self.z_q * pressure_scalehight[indices_midplane]))
                          .to(u.rad, equivalencies=u.dimensionless_angles())
                          ) ** 4
         )
