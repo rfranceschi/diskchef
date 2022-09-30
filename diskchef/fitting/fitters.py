@@ -481,7 +481,7 @@ class SciPyFitter(Fitter):
             *args, **kwargs
     ):
         scipy_result: scipy.optimize.OptimizeResult = scipy.optimize.minimize(
-            self.lnprob,
+            lambda params: -self.lnprob(params),
             *args,
             **kwargs
         )
