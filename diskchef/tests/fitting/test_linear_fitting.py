@@ -8,7 +8,7 @@ import numpy as np
 import pytest
 from astropy import units as u
 
-from diskchef.fitting.fitters import BruteForceFitter, Parameter, EMCEEFitter, UltraNestFitter
+from diskchef.fitting.fitters import BruteForceFitter, Parameter, EMCEEFitter, UltraNestFitter, SciPyFitter
 from matplotlib import pyplot as plt
 logging.basicConfig(level=logging.DEBUG)
 
@@ -21,14 +21,14 @@ def dirname():
     return dirname
 
 def linear(
-        params: List[Parameter],
+        params: List[float],
         x: np.ndarray
 ):
     return params[0] * x + params[1]
 
 
 def linear_model_lnprob(
-        params: List[Parameter],
+        params: List[float],
         x: np.ndarray,
         y: np.ndarray,
         weights: np.ndarray = None
@@ -135,8 +135,38 @@ def test_linear_emcee(threads, dirname):
 
     assert [loaded_fitter.parameters_dict["a"], loaded_fitter.parameters_dict["b"]] == [1, 2]
 
+    # not implemented
+    # fig = loaded_fitter.corner()
+    # fig.savefig(dirname / f"{runname}.pdf")
+
+@pytest.mark.parametrize(
+    "threads",
+    [
+        1, 2, None
+    ]
+)
+def test_linear_scipy(threads, dirname):
+    runname = f"scipy_{threads}"
+    x = np.linspace(1, 10, 100)
+    y = linear([1, 2], x)
+    assert linear_model_lnprob([1, 2], x, y) == 0
+    a = Parameter(name="a", min=0.1, max=10)
+    b = Parameter(name="b", min=-2, max=5)
+    fitter = SciPyFitter(
+        lnprob=linear_model_lnprob, parameters=[a, b],
+        threads=threads
+    )
+    bestfit = fitter.fit(x=x, y=y)
+    assert [bestfit["a"], bestfit["b"]] == [1, 2]
+
+    fitter.save(dirname / f"{runname}.sav")
+    loaded_fitter = EMCEEFitter.load(dirname / f"{runname}.sav")
+
+    assert [loaded_fitter.parameters_dict["a"], loaded_fitter.parameters_dict["b"]] == [1, 2]
+
     fig = loaded_fitter.corner()
     fig.savefig(dirname / f"{runname}.pdf")
+
 
 @pytest.mark.parametrize(
     "threads",
