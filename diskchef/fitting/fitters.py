@@ -6,7 +6,7 @@ import os
 from collections.abc import Iterable
 from dataclasses import dataclass, field
 from functools import partial
-from multiprocessing import Pool
+from multiprocess.pool import Pool
 
 from matplotlib.figure import Figure
 from pathlib import Path
@@ -476,18 +476,41 @@ class UltraNestFitter(Fitter):
 class SciPyFitter(Fitter):
     method: Union[None, str] = None
 
-    def fit(
-            self,
-            *args, **kwargs
-    ):
+    def fit(self, resolution: float = 1e-2, *args, **kwargs):
+        x0 = np.asarray([(param.min + param.max)/2 for param in self.parameters])
+        dp = x0[:] * resolution
         scipy_result: scipy.optimize.OptimizeResult = scipy.optimize.minimize(
-            lambda params: -self.lnprob(params),
-            *args,
-            **kwargs
+            # lambda params: -self.lnprob_fixed(params, *args, **kwargs),
+            lambda params: -self.lnprob_fixed(params, *args, **kwargs),
+            x0=x0, method='CG', jac='2-point',
+            options={
+                'finite_diff_rel_step': dp,
+                'return_all': True
+            }
         )
         self.scipy_result = scipy_result
 
         for parameter, result in zip(self.parameters, self.scipy_result.x):
             parameter.fitted = result
 
-        return self.parameters_dict
+        try:
+            for i, _parameter in enumerate(self.parameters):
+                _parameter.fitted_error = np.absolute(10**i * dp * self.scipy_result.jac[i])
+        except AttributeError:
+            pass
+        return self.parameters_dict, self.scipy_result
+
+    def jac(self, params, dp: float = 1e-3, *args, **kwargs):
+        all_params = [params]
+        for i, _params in enumerate(params):
+            dparams = np.copy(params)
+            dparams[i] += dp
+            all_params.append(dparams)
+        with Pool(self.threads) as pool:
+            results = pool.map(lambda param: -self.lnprob_fixed(param, *args, *kwargs), all_params)
+        jac = (results[1:] - results[0]) / dp
+        return jac
+
+    def corner(self, scatter_kwargs=None, hexbin_kwargs=None, **kwargs) -> Figure:
+        pass
+
