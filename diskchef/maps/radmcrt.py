@@ -200,7 +200,7 @@ class RadMCOutput:
         maxval = round(0.9 * downsampled.max().value, 1)
         if symnorm and (norm is None):
             norm = Normalize(-maxval, maxval)
-        else:
+        elif norm is None:
             norm = Normalize(0, maxval)
         aspect_ratio = downsampled.shape[2] / float(downsampled.shape[1])
         fig_smallest_dim_inches = 5
@@ -258,7 +258,7 @@ class RadMCOutput:
                     ax.set_ylabel(f"[{window_unit.to_string('latex_inline')}]", labelpad=-18)
         else:
             cax = fig.add_axes([0.90, 0.1, 0.03, 0.8])
-            cb = fig.colorbar(im, cax=cax, norm=norm)
+            cb = fig.colorbar(im, cax=cax)
             cb.ax.set_xlabel(f"\n[{downsampled.unit.to_string('latex')}]")
         gs.update(left=0.1, right=0.9, top=0.9, bottom=0.1)
         fig.suptitle(f"{self.object_name} {chemical_names.from_string(self.line.molecule)}")
