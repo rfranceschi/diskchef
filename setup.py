@@ -30,7 +30,8 @@ setup(
         'ultranest == 3.3.3',
         'h5py',
         'mpi4py',
-        'regions'
+        'regions',
+        'multiprocess',
     ],
     version_config=True,
     setup_requires=['setuptools-git-versioning', 'cython'],
