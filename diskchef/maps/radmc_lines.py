@@ -76,7 +76,6 @@ class RadMCRTImage(RadMCBase):
                    )
         if self.sloppy:
             command += 'sloppy'
-        print(command)
         self.logger.info("Running radmc3d for wavelength %.4e um: %s", wavelength.value, command)
         proc = subprocess.run(
             command,
@@ -97,13 +96,14 @@ class RadMCRTImage(RadMCBase):
         )
 
     def radmc_to_fits(
-            self, name: PathLike, line: typing.Union[Line, u.Quantity], distance,
+            self, name: PathLike, line: typing.Union[Line, u.Quantity], distance: u.pc,
     ) -> PathLike:
         """Saves RadMC3D `image.out` files as FITS files
 
         Args:
             name: PathLike -- image.out-like file to process
             line: Union[Line, wavelength-like u.Quantity]
+            distance: u.pc -- distance of the source
         Returns:
             PathLike object of a newly created fits files
         """
