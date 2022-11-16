@@ -1,11 +1,10 @@
-from dataclasses import dataclass
-
 import logging
+from dataclasses import dataclass
 from typing import List, Union
 
 from diskchef.chemistry.base import ChemistryBase
-from diskchef.physics.base import PhysicsBase
 from diskchef.lamda.line import Line
+from diskchef.physics.base import PhysicsBase
 
 
 @dataclass
