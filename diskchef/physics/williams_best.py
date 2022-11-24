@@ -2,7 +2,6 @@ from dataclasses import dataclass
 from functools import cached_property
 
 import numpy as np
-import pytest
 import scipy.integrate
 import scipy.interpolate
 from astropy import units as u, constants as const
