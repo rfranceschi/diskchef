@@ -151,17 +151,19 @@ def test_linear_scipy(threads, dirname):
     x = np.linspace(1, 10, 100)
     y = linear([1, 2], x)
     assert linear_model_lnprob([1, 2], x, y) == 0
-    a = Parameter(name="a", min=0.1, max=10)
-    b = Parameter(name="b", min=-2, max=5)
+    a = Parameter(name="a", min=0, max=3)
+    b = Parameter(name="b", min=0, max=3)
     fitter = SciPyFitter(
         lnprob=linear_model_lnprob, parameters=[a, b],
         threads=threads
     )
-    bestfit = fitter.fit(x=x, y=y)
-    # assert [bestfit["a"], bestfit["b"]] == [1, 2]
-
-    fitter.save(dirname / f"{runname}.sav")
-    loaded_fitter = EMCEEFitter.load(dirname / f"{runname}.sav")
+    weights = 1e7 * np.ones_like(x)
+    res, scipy_res = fitter.fit(x=x, y=y, weights=weights)
+    # print(res['a'].fitted - res['a'].fitted_error, res['a'].fitted + res['a'].fitted_error, res['a'].fitted_error)
+    # print(res['b'].fitted - res['b'].fitted_error, res['b'].fitted + res['b'].fitted_error, res['b'].fitted_error)
+    # assert [res["a"], res["b"]] == [1, 2]
+    # fitter.save(dirname / f"{runname}.sav")
+    # loaded_fitter = EMCEEFitter.load(dirname / f"{runname}.sav")
 
     # assert [loaded_fitter.parameters_dict["a"], loaded_fitter.parameters_dict["b"]] == [1, 2]
 

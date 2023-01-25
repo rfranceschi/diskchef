@@ -26,7 +26,7 @@ class WilliamsBest2014(ParametrizedPhysics):
                      gas_mass=<Quantity 0.001 solMass>, tapering_radius=<Quantity 100. AU>,
                      tapering_gamma=0.75, midplane_temperature_1au=<Quantity 200. K>,
                       atmosphere_temperature_1au=<Quantity 1000. K>, temperature_slope=0.55,
-                      molar_mass=<Quantity 2.33 g / mol>, inner_radius=<Quantity 1. AU>, inner_depletion=1e-06, z_q=4.0)
+                      molar_mass=<Quantity 2.33 g / mol>, inner_radius=<Quantity 1. AU>, inner_depletion=1e-06, zq=4.0)
     >>> # Defaults can be overridden
     >>> WilliamsBest2014(star_mass=2 * u.solMass, r_max=200 * u.au)  # doctest: +NORMALIZE_WHITESPACE
     WilliamsBest2014(star_mass=<Quantity 2. solMass>, xray_plasma_temperature=<Quantity 10000000. K>,
@@ -35,7 +35,7 @@ class WilliamsBest2014(ParametrizedPhysics):
                      gas_mass=<Quantity 0.001 solMass>, tapering_radius=<Quantity 100. AU>, tapering_gamma=0.75,
                      midplane_temperature_1au=<Quantity 200. K>, atmosphere_temperature_1au=<Quantity 1000. K>,
                      temperature_slope=0.55, molar_mass=<Quantity 2.33 g / mol>, inner_radius=<Quantity 1. AU>,
-                     inner_depletion=1e-06, z_q=4.0)
+                     inner_depletion=1e-06, zq=4.0)
 
     >>> # Generate physics on 3x3 grid
     >>> physics_small_grid = WilliamsBest2014(vertical_bins=3, radial_bins=3)
@@ -72,7 +72,7 @@ class WilliamsBest2014(ParametrizedPhysics):
     molar_mass: u.kg / u.mol = 2.33 * u.g / u.mol
     inner_radius: u.au = 1 * u.au
     inner_depletion: float = 1e-6
-    z_q: float = 4.
+    zq: float = 4.
 
     @u.quantity_input
     def gas_temperature(self, r: u.au, z: u.au) -> u.K:
@@ -101,13 +101,13 @@ class WilliamsBest2014(ParametrizedPhysics):
                 ) ** 0.5
         ).to(u.au)
         temperature = u.Quantity(np.zeros_like(z)).value << u.K
-        indices_atmosphere = z >= self.z_q * pressure_scalehight
+        indices_atmosphere = z >= self.zq * pressure_scalehight
         indices_midplane = ~ indices_atmosphere
         temperature[indices_atmosphere] = temp_atmosphere[indices_atmosphere]
         temperature[indices_midplane] = (
                 temp_midplane[indices_midplane]
                 + (temp_atmosphere[indices_midplane] - temp_midplane[indices_midplane])
-                * np.sin((np.pi * z[indices_midplane] / (2 * self.z_q * pressure_scalehight[indices_midplane]))
+                * np.sin((np.pi * z[indices_midplane] / (2 * self.zq * pressure_scalehight[indices_midplane]))
                          .to(u.rad, equivalencies=u.dimensionless_angles())
                          ) ** 4
         )

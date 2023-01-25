@@ -6,7 +6,7 @@ import os
 from collections.abc import Iterable
 from dataclasses import dataclass, field
 from functools import partial
-from multiprocess.pool import Pool
+from multiprocessing import Pool
 
 from matplotlib.figure import Figure
 from pathlib import Path
@@ -476,16 +476,14 @@ class UltraNestFitter(Fitter):
 class SciPyFitter(Fitter):
     method: Union[None, str] = None
 
-    def fit(self, resolution: float = 1e-2, *args, **kwargs):
+    def fit(self, rel_step: float = None, *args, **kwargs):
         x0 = np.asarray([(param.min + param.max)/2 for param in self.parameters])
-        dp = x0[:] * resolution
         scipy_result: scipy.optimize.OptimizeResult = scipy.optimize.minimize(
             # lambda params: -self.lnprob_fixed(params, *args, **kwargs),
             lambda params: -self.lnprob_fixed(params, *args, **kwargs),
             x0=x0, method='CG', jac='2-point',
             options={
-                'finite_diff_rel_step': dp,
-                'return_all': True
+                'finite_diff_rel_step': rel_step,
             }
         )
         self.scipy_result = scipy_result
@@ -493,11 +491,12 @@ class SciPyFitter(Fitter):
         for parameter, result in zip(self.parameters, self.scipy_result.x):
             parameter.fitted = result
 
-        try:
-            for i, _parameter in enumerate(self.parameters):
-                _parameter.fitted_error = np.absolute(10**i * dp * self.scipy_result.jac[i])
-        except AttributeError:
-            pass
+        if rel_step is not None:
+            try:
+                for i, _parameter in enumerate(self.parameters):
+                    _parameter.fitted_error = np.absolute(rel_step * max(1, _parameter.fitted) * self.scipy_result.jac[i])
+            except AttributeError:
+                pass
         return self.parameters_dict, self.scipy_result
 
     def jac(self, params, dp: float = 1e-3, *args, **kwargs):
