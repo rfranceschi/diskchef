@@ -250,3 +250,23 @@ class WB100auWithSmoothInnerGap(WilliamsBest100au):
     def column_density(self, r: u.au) -> u.g / u.cm ** 2:
         """Gas column density at given radius"""
         return self.column_density_norm * self._column_density_unscaled(r)
+
+
+@dataclass
+class WB1auWithSmoothInnerGap(WilliamsBest2014):
+    @cached_property
+    def column_density_norm(self) -> u.g / u.cm ** 2:
+        _r = np.geomspace(self.inner_radius / 10, self.tapering_radius * 10, 1000).to(u.au)
+        return self.gas_mass / np.trapz(2 * np.pi * _r * self._column_density_unscaled(_r), _r)
+
+    @u.quantity_input
+    def _column_density_unscaled(self, r: u.au) -> u.dimensionless_unscaled:
+        return (r / self.tapering_radius) ** (-self.tapering_gamma) \
+            * np.exp(-(r / self.tapering_radius) ** (2 - self.tapering_gamma)) \
+            * np.exp(-(r / self.inner_radius) ** (self.tapering_gamma - 2))
+
+    @u.quantity_input
+    def column_density(self, r: u.au) -> u.g / u.cm ** 2:
+        """Gas column density at given radius"""
+        return self.column_density_norm * self._column_density_unscaled(r)
+

@@ -49,25 +49,32 @@ class PhysicsBase:
             axes: matplotlib.axes.Axes = None,
             table: CTable = None, folder=".",
             cmap: Union[matplotlib.colors.Colormap, str] = 'PuBuGn',
+            data2: str = None,
             **kwargs
     ) -> Plot2D:
         """Plot 2D Gas and Dust density figures"""
         if table is None:
             table = self.table
-        return Plot2D(table, axes=axes, data1="Gas density", data2="Dust density", cmap=cmap, **kwargs)
+        if data2 is None:
+            data2 = "Dust density"
+
+        return Plot2D(table, axes=axes, data1="Gas density", data2=data2, cmap=cmap, **kwargs)
 
     def plot_temperatures(
             self,
             axes: matplotlib.axes.Axes = None,
             table: CTable = None, folder=".",
             cmap: Union[matplotlib.colors.Colormap, str] = 'afmhot',
+            data2: 'str' = None,
             **kwargs
     ) -> Plot2D:
         """Plot 2D Gas and Dust temperature figures"""
+        if data2 is None:
+            data2 = "Dust temperature"
         if table is None:
             self.check_temperatures()
             table = self.table
-        return Plot2D(table, axes=axes, data1="Gas temperature", data2="Dust temperature", cmap=cmap, **kwargs)
+        return Plot2D(table, axes=axes, data1="Gas temperature", data2=data2, cmap=cmap, **kwargs)
 
     def plot_column_densities(
             self,
@@ -207,7 +214,6 @@ class PhysicsBase:
 
         https://www.aanda.org/articles/aa/pdf/2018/06/aa32202-17.pdf
 
-        TODO: what is about magnetic fields?
         """
         if "Total density" not in self.table.colnames:
             self.table["Total density"] = self.table["Gas density"] + self.table["Dust density"]
